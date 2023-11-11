@@ -6,25 +6,24 @@ from pymongo import MongoClient
 from pymongo import errors
 from pymongo.server_api import ServerApi
 from pymongo.errors import OperationFailure
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 uri = 'mongodb+srv://cluster1.cjufb6h.mongodb.net/?authSource=%24external'  \
         '&authMechanism=MONGODB-X509&retryWrites=true&w=majority'
 
 path_to_certificate = 'pm_cert.pem'
 
+client = MongoClient(uri, tls=True, tlsCertificateKeyFile=path_to_certificate,
+                     server_api=ServerApi('1'))  # type: Any
 
-def create_connection() -> None:
+
+def create_connection(client: Any) -> Any:
 
     """Creates connection to MongoDB database
 
     Raises:
         ex: Raises an error if found
     """
-
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
 
     try:
         db = client['testDB']
@@ -36,7 +35,8 @@ def create_connection() -> None:
         raise ex
 
 
-def create_collection(database_name: str, collection_name: str) -> None:
+def create_collection(client: Any, database_name: str,
+                      collection_name: str) -> None:
 
     """Creates a collection
 
@@ -48,10 +48,6 @@ def create_collection(database_name: str, collection_name: str) -> None:
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         db.create_collection(collection_name)
@@ -60,8 +56,8 @@ def create_collection(database_name: str, collection_name: str) -> None:
         raise ex
 
 
-def insert_entry(database_name: str,
-                 collection_name: str, entry: list[str, Any]) -> None:
+def insert_entry(client: Any, database_name: str,
+                 collection_name: str, entry: List[Any]) -> None:
 
     """Inserts one {key: value} pair into collection
 
@@ -75,10 +71,6 @@ def insert_entry(database_name: str,
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -89,8 +81,8 @@ def insert_entry(database_name: str,
         raise ex
 
 
-def insert_entries(database_name: str, collection_name: str,
-                   entries: list[Any, Any]) -> None:
+def insert_entries(client: Any, database_name: str, collection_name: str,
+                   entries: List[Any]) -> None:
 
     """Inserts mutltiple {key: value} entries into collection as long as they
         are in a list
@@ -105,10 +97,6 @@ def insert_entries(database_name: str, collection_name: str,
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -119,7 +107,7 @@ def insert_entries(database_name: str, collection_name: str,
         raise ex
 
 
-def find_entries(database_name: str, collection_name: str,
+def find_entries(client: Any, database_name: str, collection_name: str,
                  entries: Dict[str, Any] | None = None) -> Any:
 
     """Finds {key: value} listings in a collection
@@ -142,10 +130,6 @@ def find_entries(database_name: str, collection_name: str,
         Any: Returns list of collection dictionary entries
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         if entries is None:
             db = client[database_name]
@@ -165,7 +149,7 @@ def find_entries(database_name: str, collection_name: str,
         raise ex
 
 
-def update_entry(database_name: str, collection_name: str,
+def update_entry(client: Any, database_name: str, collection_name: str,
                  old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
 
     """Finds the first matching key of {key: value} filter and
@@ -184,10 +168,6 @@ def update_entry(database_name: str, collection_name: str,
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -199,7 +179,7 @@ def update_entry(database_name: str, collection_name: str,
         raise ex
 
 
-def update_entries(database_name: str, collection_name: str,
+def update_entries(client: Any, database_name: str, collection_name: str,
                    old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
 
     """Finds the all matching keys of {key: value} filter and updates the
@@ -217,10 +197,6 @@ def update_entries(database_name: str, collection_name: str,
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -232,7 +208,7 @@ def update_entries(database_name: str, collection_name: str,
         raise ex
 
 
-def delete_entry(database_name: str, collection_name: str,
+def delete_entry(client: Any, database_name: str, collection_name: str,
                  old_data: Dict[str, Any]) -> None:
 
     """Deletes the first matching {key: value} filter entry
@@ -247,10 +223,6 @@ def delete_entry(database_name: str, collection_name: str,
         ex: Raises an error if found
     """
 
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
-
     try:
         db = client[database_name]
         collection = db[collection_name]
@@ -261,7 +233,7 @@ def delete_entry(database_name: str, collection_name: str,
         raise ex
 
 
-def delete_entries(database_name: str, collection_name: str,
+def delete_entries(client: Any, database_name: str, collection_name: str,
                    old_data: Dict[str, Any]) -> None:
 
     """Deletes entries matching {key: value} filter
@@ -275,10 +247,6 @@ def delete_entries(database_name: str, collection_name: str,
     Raises:
         ex: Raises an error if found
     """
-
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
 
     try:
         db = client[database_name]
