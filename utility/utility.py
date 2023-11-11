@@ -128,10 +128,12 @@ def find_entries(database_name: str, collection_name: str,
         database_name (str): Name of MongoDB database
         collection_name (str): Name of MongoDB collection
         entries (Dict[str, Any] | None, optional): If variable name "entries"
-        is not passed in, it will find and return all listings in collection.
-        If variable name "entries" is passed in, it will search for matching
-        key in {key: value} and return all matching listings in collection.
-        Variable name entries defaults to None.
+            is not passed in, the function will find and return all listings in
+            the collection.
+            If variable name "entries" is passed in, the function will search
+            for matching keys in {key: value} filter and return all matching
+            listings in the collection.
+        Variable name "entries" defaults to None.
 
     Raises:
         ex: Raises an error if found
@@ -166,15 +168,17 @@ def find_entries(database_name: str, collection_name: str,
 def update_entry(database_name: str, collection_name: str,
                  old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
 
-    """Finds the first matching key of {key: value} and updates the value
+    """Finds the first matching key of {key: value} filter and
+        updates the value
 
     Args:
         database_name (str): Name of MongoDB database
         collection_name (str): Name of MongoDB collection
-        old_data (Dict[str, Any]): The {key: value} that needs to be removed
-            from the first matching entry
-        new_data (Dict[str, Any]): the {key: value} that needs to take the
-            place of the first matching {key:value} in the collection
+        old_data (Dict[str, Any]): The {key: value} filter that needs to be
+            removed from the first matching entry
+        new_data (Dict[str, Any]): the {key: value} filter that needs to take
+            the place of the first matching {key:value} filter in
+            the collection
 
     Raises:
         ex: Raises an error if found
@@ -198,15 +202,16 @@ def update_entry(database_name: str, collection_name: str,
 def update_entries(database_name: str, collection_name: str,
                    old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
 
-    """Finds the all matching keys of {key: value} and updates the values
+    """Finds the all matching keys of {key: value} filter and updates the
+        values
 
     Args:
         database_name (str): Name of MongoDB database
         collection_name (str): Name of MongoDB collection
-        old_data (Dict[str, Any]): The {key: value} that needs to be removed
-            from the collection
-        new_data (Dict[str, Any]): the {key: value} that needs to take the
-            place of all removed {key:value} in the collection
+        old_data (Dict[str, Any]): The {key: value} filter that needs to be
+            removed from the collection
+        new_data (Dict[str, Any]): the {key: value} filter that needs to take
+            the place of all removed {key:value} in the collection
 
     Raises:
         ex: Raises an error if found
@@ -235,8 +240,8 @@ def delete_entry(database_name: str, collection_name: str,
     Args:
         database_name (str): Name of MongoDB database
         collection_name (str): Name of MongoDB collection
-        old_data (Dict[str, Any]): The {key: value} you want to delete from
-            the first matching entry in the collection
+        old_data (Dict[str, Any]): The {key: value} filter you want to delete
+        from the first matching entry in the collection
 
     Raises:
         ex: Raises an error if found
@@ -264,8 +269,8 @@ def delete_entries(database_name: str, collection_name: str,
     Args:
         database_name (str): Name of MongoDB database
         collection_name (str): Name of MongoDB collection
-        old_data (Dict[str, Any]): The {key: value} you want to delete from
-            all entries in the collection
+        old_data (Dict[str, Any]): The {key: value} filter you want to delete
+        from all entries in the collection
 
     Raises:
         ex: Raises an error if found
