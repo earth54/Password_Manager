@@ -23,7 +23,7 @@ def create_connection() -> Any:
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client['testDB']
@@ -50,7 +50,7 @@ def create_collection(database_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -77,7 +77,7 @@ def insert_entry(database_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -107,7 +107,7 @@ def insert_entries(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -144,7 +144,7 @@ def find_entries(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         if entries is None:
@@ -186,7 +186,7 @@ def update_entry(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -219,7 +219,7 @@ def update_entries(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -249,7 +249,7 @@ def delete_entry(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
@@ -278,7 +278,7 @@ def delete_entries(database_name: str, collection_name: str,
 
     client = MongoClient(uri, tls=True,
                          tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))
+                         server_api=ServerApi('1'))   # type: Any
 
     try:
         db = client[database_name]
