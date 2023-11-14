@@ -7,23 +7,26 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 
-# function to establish the db connection
 def setup_connection():
     # Load environment variables from a .env file
     load_dotenv()
 
-    # Retrieve the MongoDB Atlas connection string and database name from environment variables
+    # Retrieve the MongoDB Atlas connection string from environment variables
     MONGODB_URI = os.getenv('MONGODB_URI')
-    DB_NAME = os.getenv('DB_NAME')
+    X509_CERT = os.getenv('MONGODB_X509_CERT')  # Path to the X.509 cert
 
-    if not MONGODB_URI or not DB_NAME:
+    if not MONGODB_URI or not X509_CERT:
         raise ValueError(
-            "MongoDB connection string or database name not found in environment variables")
+            "MongoDB connection string or X.509 cert not found in environment variables")
 
-    # Connect to the MongoDB Atlas cluster
-    client = MongoClient(MONGODB_URI)
+    # Connect to the MongoDB Atlas cluster with X.509 authentication
+    client = MongoClient(MONGODB_URI,
+                         tls=True,
+                         tlsCertificateKeyFile=X509_CERT,
+                         authMechanism='MONGODB-X509')
 
-    # Select the database using the environment variable for the name
+    # The database name is usually derived from the URI; otherwise, it can be set explicitly
+    DB_NAME = os.getenv('DB_NAME') or 'your_default_db_name'
     db = client[DB_NAME]
 
     return client, db
