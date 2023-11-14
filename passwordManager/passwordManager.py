@@ -13,16 +13,23 @@ def setup_connection():
 
     # Retrieve the MongoDB Atlas connection string from environment variables
     MONGODB_URI = os.getenv('MONGODB_URI')
-    X509_CERT = os.getenv('MONGODB_X509_CERT')  # Path to the X.509 cert
 
-    if not MONGODB_URI or not X509_CERT:
+    if not MONGODB_URI:
         raise ValueError(
-            "MongoDB connection string or X.509 cert not found in environment variables")
+            "MongoDB connection string not found in environment variables")
+
+    # Assuming the '.pem' file is in the 'utility' folder within the same directory as the script
+    # Gets the directory of the script
+    script_dir = os.path.dirname(os.path.realpath(__file__))
+    # The relative path to the '.pem' file
+    pem_relative_path = 'utility/pm_cert.pem'
+    # Full path to the '.pem' file
+    pem_path = os.path.join(script_dir, pem_relative_path)
 
     # Connect to the MongoDB Atlas cluster with X.509 authentication
     client = MongoClient(MONGODB_URI,
                          tls=True,
-                         tlsCertificateKeyFile=X509_CERT,
+                         tlsCertificateKeyFile=pem_path,
                          authMechanism='MONGODB-X509')
 
     # The database name is usually derived from the URI; otherwise, it can be set explicitly
