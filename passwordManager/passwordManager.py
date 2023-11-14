@@ -98,11 +98,8 @@ def decrypt_password(fernet_key, encrypted_password):
 
 
 def user_exists(username):
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    existing_user = cursor.fetchone()
-    conn.close()
+    users_collection = db['Users']
+    existing_user = users_collection.find_one({'username': username})
     return existing_user is not None
 
 # Function to validate master password strength
@@ -122,18 +119,12 @@ def validate_master_password(password):
 # Function to create a new user with password strength and matching confirmation
 
 
-def create_user(username, master_password):
-
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+def create_user(db, username, master_password):
+    users_collection = db['Users']
 
     # Check if the username already exists
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    existing_user = cursor.fetchone()
-
-    if existing_user:
+    if user_exists(db, username):
         print("Username already exists. Please choose a different username.")
-        conn.close()
         return
 
     # Generate a unique Fernet key for the user
@@ -142,114 +133,99 @@ def create_user(username, master_password):
     # Encrypt the master password using the user's Fernet key
     encrypted_master_password = encrypt_password(fernet_key, master_password)
 
-    cursor.execute("INSERT INTO Users (username, encrypted_master_password) VALUES (?, ?)",
-                   (username, encrypted_master_password))
-    user_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+    # Insert the new user document into the collection
+    users_collection.insert_one({
+        'username': username,
+        'encrypted_master_password': encrypted_master_password
+    })
+
+    user_id = users_collection.find_one({'username': username})['_id']
 
     # Store the user's Fernet key locally
-    store_fernet_key_locally(fernet_key, user_id)
+    store_fernet_key_locally(fernet_key, str(user_id))
 
     print("User created successfully")
+
 
 # Function to authenticate a user
 
 
-def authenticate_user(username, master_password):
-    with sqlite3.connect('password_manager.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT encrypted_master_password, user_id FROM Users WHERE username=?", (username,))
-        result = cursor.fetchone()
+def authenticate_user(db, username, master_password):
+    users_collection = db['Users']
+    user_document = users_collection.find_one({'username': username})
 
-    if result is not None:
-        encrypted_master_password = result[0]
-        user_id = result[1]  # Retrieve the user_id separately
+    if user_document is not None:
+        encrypted_master_password = user_document['encrypted_master_password']
+        user_id = user_document['_id']
 
-        fernet_key = load_fernet_key_locally(
-            user_id)  # Load the user's Fernet key
+        fernet_key = load_fernet_key_locally(str(user_id))
 
         try:
-            # Decrypt the stored master password using the user's Fernet key
             decrypted_master_password = decrypt_password(
                 fernet_key, encrypted_master_password)
-            if master_password == decrypted_master_password:
-                return True
+            return master_password == decrypted_master_password
         except Exception as e:
             print(f"Error during password decryption: {e}")
 
     return False
 
+
 # Function to modify the user's master password
 
 
-def update_user_master_password(username, new_master_password):
-    if not user_exists(username):
-        print("User does not exist.")
-        return False
-
+def update_user_master_password(db, username, new_master_password):
     if not validate_master_password(new_master_password):
         print("New master password does not meet the strength requirements.")
         return False
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+    users_collection = db['Users']
+    user_document = users_collection.find_one({'username': username})
 
-    # Retrieve the user's current Fernet key
-    cursor.execute(
-        "SELECT user_id, encrypted_master_password FROM Users WHERE username=?", (username,))
-    user_info = cursor.fetchone()
-    user_id = user_info[0]
-    encrypted_master_password = user_info[1]
+    if user_document:
+        user_id = user_document['_id']
+        fernet_key = load_fernet_key_locally(str(user_id))
 
-    # Decrypt the old master password
-    fernet_key = load_fernet_key_locally(user_id)
-    old_master_password = decrypt_password(
-        fernet_key, encrypted_master_password)
+        encrypted_new_master_password = encrypt_password(
+            fernet_key, new_master_password)
 
-    # Encrypt the new master password with the same key
-    encrypted_new_master_password = encrypt_password(
-        fernet_key, new_master_password)
+        users_collection.update_one(
+            {'_id': user_id},
+            {'$set': {'encrypted_master_password': encrypted_new_master_password}}
+        )
 
-    # Update the user's master password in the database
-    cursor.execute("UPDATE Users SET encrypted_master_password=? WHERE user_id=?",
-                   (encrypted_new_master_password, user_id))
-    conn.commit()
-    conn.close()
+        return True
+    else:
+        print("User does not exist.")
+        return False
 
-    return True
 
 # Function to delete the user and their passwords
 
 
-def delete_user(username):
-    if not user_exists(username):
-        print("User does not exist.")
+def delete_user(db, username):
+    users_collection = db['Users']
+    passwords_collection = db['Passwords']
+
+    user_document = users_collection.find_one({'username': username})
+    if user_document:
+        user_id = user_document['_id']
+
+        # Delete the user's passwords
+        passwords_collection.delete_many({'user_id': user_id})
+
+        # Delete the user document from the Users collection
+        users_collection.delete_one({'_id': user_id})
+
+        # Remove the Fernet key file for this user
+        key_filename = f"user_{user_id}_fernet.key"
+        if os.path.exists(key_filename):
+            os.remove(key_filename)
+
+        print("User and associated data deleted successfully.")
+        return True
+    else:
+        print("User not found.")
         return False
-
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-
-    # Retrieve the user's user_id
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()[0]
-
-    # Delete the user's passwords
-    cursor.execute("DELETE FROM Passwords WHERE user_id=?", (user_id,))
-
-    # Delete the user from the Users table
-    cursor.execute("DELETE FROM Users WHERE username=?", (username,))
-
-    conn.commit()
-    conn.close()
-
-    # Remove the Fernet key file for this user (optional)
-    key_filename = f"user_{user_id}_fernet.key"
-    if os.path.exists(key_filename):
-        os.remove(key_filename)
-
-    return True
 
 
 def add_password(username, service_name, username_entry, password_entry):
