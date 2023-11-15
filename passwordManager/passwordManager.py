@@ -7,6 +7,7 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 
 
+# function to open the MongoDB connection
 def setup_connection():
     # Load environment variables from a .env file
     load_dotenv()
@@ -39,11 +40,13 @@ def setup_connection():
     return client, db
 
 
-# function to close the db connection when finished with the database operations
+# function to close the MongoDB connection
+# (when finished with all database operations)
 def close_connection(client):
     client.close()
 
 
+# function to create a database in MongoDB
 def setup_database(db):
     # Define the 'Users' collection and create a unique index on the 'username' field
     users_collection = db['Users']
@@ -61,50 +64,44 @@ def generate_user_fernet_key():
     key = Fernet.generate_key()
     return key
 
+
 # Store the Fernet key locally for a user
-
-
 def store_fernet_key_locally(fernet_key, user_id):
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "wb") as key_file:
         key_file.write(fernet_key)
 
+
 # Load the user's Fernet key from local storage
-
-
 def load_fernet_key_locally(user_id):
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "rb") as key_file:
         key = key_file.read()
     return key
 
+
 # Encrypt a password using Fernet key
-
-
 def encrypt_password(fernet_key, password):
     fernet = Fernet(fernet_key)
     encrypted_password = fernet.encrypt(password.encode())
     return encrypted_password
 
+
 # Function to decrypt passwords
-
-
 def decrypt_password(fernet_key, encrypted_password):
     fernet = Fernet(fernet_key)
     decrypted_password = fernet.decrypt(encrypted_password)
     return decrypted_password.decode()
 
-# Function to check if the username already exists
 
-
+# Function to check if the username already exists in MongoDB
 def user_exists(username):
     users_collection = db['Users']
     existing_user = users_collection.find_one({'username': username})
     return existing_user is not None
 
+
 # Function to validate master password strength
-
-
 def validate_master_password(password):
     if (
         len(password) >= 8
@@ -116,9 +113,8 @@ def validate_master_password(password):
         return True
     return False
 
-# Function to create a new user with password strength and matching confirmation
 
-
+# Function to create a new user with password strength and matching confirmation in MongoDB
 def create_user(db, username, master_password):
     users_collection = db['Users']
 
@@ -147,9 +143,7 @@ def create_user(db, username, master_password):
     print("User created successfully")
 
 
-# Function to authenticate a user
-
-
+# Function to authenticate a user in MongoDB
 def authenticate_user(db, username, master_password):
     users_collection = db['Users']
     user_document = users_collection.find_one({'username': username})
@@ -170,9 +164,7 @@ def authenticate_user(db, username, master_password):
     return False
 
 
-# Function to modify the user's master password
-
-
+# Function to modify the user's master password in MongoDB
 def update_user_master_password(db, username, new_master_password):
     if not validate_master_password(new_master_password):
         print("New master password does not meet the strength requirements.")
@@ -199,9 +191,7 @@ def update_user_master_password(db, username, new_master_password):
         return False
 
 
-# Function to delete the user and their passwords
-
-
+# Function to delete the user and their passwords in MongoDB
 def delete_user(db, username):
     users_collection = db['Users']
     passwords_collection = db['Passwords']
@@ -250,9 +240,6 @@ def add_password(db, user_id, service_name, username_entry, password_entry):
     return True
 
 
-# Function to retrieve password entries for a user
-
-
 # Function to retrieve password entries for a user in MongoDB
 def retrieve_passwords(db, user_id):
     # Get the Passwords collection
@@ -270,9 +257,6 @@ def retrieve_passwords(db, user_id):
         print(f"Username: {doc['username']}")
         print(f"Password: {decrypted_password}")
         print()  # Add an empty line to separate entries
-
-
-# Function to update the username and password for a service
 
 
 # Function to update the username and password for a service in MongoDB
