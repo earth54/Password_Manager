@@ -228,104 +228,94 @@ def delete_user(db, username):
         return False
 
 
-def add_password(username, service_name, username_entry, password_entry):
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
+# Function to add a password entry for a user in MongoDB
+def add_password(db, user_id, service_name, username_entry, password_entry):
+    # Load the user's Fernet key
+    fernet_key = load_fernet_key_locally(user_id)
 
-    if user_id is not None:
-        # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+    # Encrypt the password entry using the user's Fernet key
+    encrypted_password_entry = encrypt_password(fernet_key, password_entry)
 
-        # Encrypt the password entry using the user's Fernet key
-        encrypted_password_entry = encrypt_password(fernet_key, password_entry)
+    # Get the Passwords collection
+    passwords_collection = db['Passwords']
 
-        cursor.execute("INSERT INTO Passwords (user_id, service_name, username, encrypted_password) VALUES (?, ?, ?, ?)",
-                       (user_id[0], service_name, username_entry, encrypted_password_entry))
-        conn.commit()
-        conn.close()
-        return True
-    else:
-        conn.close()
-        return False
+    # Insert the new password document into the Passwords collection
+    passwords_collection.insert_one({
+        'user_id': user_id,
+        'service_name': service_name,
+        'username': username_entry,
+        'encrypted_password': encrypted_password_entry
+    })
+    print("Password entry added successfully.")
+    return True
+
 
 # Function to retrieve password entries for a user
 
 
-def retrieve_passwords(username):
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
+# Function to retrieve password entries for a user in MongoDB
+def retrieve_passwords(db, user_id):
+    # Get the Passwords collection
+    passwords_collection = db['Passwords']
 
-    if user_id is not None:
-        cursor.execute(
-            "SELECT * FROM Passwords WHERE user_id=?", (user_id[0],))
-        entries = cursor.fetchall()
+    # Find all documents where the user_id matches
+    password_documents = passwords_collection.find({'user_id': user_id})
 
-        # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+    # Decrypt the encrypted password entries and display them
+    fernet_key = load_fernet_key_locally(user_id)
+    for doc in password_documents:
+        decrypted_password = decrypt_password(
+            fernet_key, doc['encrypted_password'])
+        print(f"Service: {doc['service_name']}")
+        print(f"Username: {doc['username']}")
+        print(f"Password: {decrypted_password}")
+        print()  # Add an empty line to separate entries
 
-        # Decrypt the encrypted password entries and display them
-        for entry in entries:
-            decrypted_password = decrypt_password(fernet_key, entry[4])
-            print(f"Service: {entry[2]}")
-            print(f"Username: {entry[3]}")
-            print(f"Password: {decrypted_password}")
-            print()  # Add an empty line to separate entries
-
-        conn.close()
-    else:
-        conn.close()
-        print("No password entries found.")
 
 # Function to update the username and password for a service
 
 
-def update_service(username, service_name, new_username, new_password):
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+# Function to update the username and password for a service in MongoDB
+def update_service(db, user_id, service_name, new_username, new_password):
+    # Get the Passwords collection
+    passwords_collection = db['Passwords']
 
-    # Check if the user exists
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
+    # Load the user's Fernet key
+    fernet_key = load_fernet_key_locally(user_id)
 
-    if user_id:
-        # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+    # Encrypt the new username and password with the user's Fernet key
+    encrypted_new_password = encrypt_password(fernet_key, new_password)
 
-        # Encrypt the new username and password with the user's Fernet key
-        encrypted_new_password = encrypt_password(fernet_key, new_password)
+    # Update the username and password for the service
+    result = passwords_collection.update_one(
+        {'user_id': user_id, 'service_name': service_name},
+        {'$set': {'username': new_username, 'encrypted_password': encrypted_new_password}}
+    )
 
-        # Update the username and password for the service
-        cursor.execute("UPDATE Passwords SET username=?, encrypted_password=? WHERE user_id=? AND service_name=?",
-                       (new_username, encrypted_new_password, user_id[0], service_name))
-        conn.commit()
-        conn.close()
+    if result.matched_count:
+        print(f"Password for {service_name} updated successfully.")
         return True
     else:
-        conn.close()
-        print("User not found.")
+        print(
+            f"Failed to update the password for {service_name}. Service not found.")
         return False
 
 
-# Function to delete a service and its passwords
-def delete_service_and_passwords(username, service_name):
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+# Function to delete a service and its passwords in MongoDB
+def delete_service_and_passwords(db, user_id, service_name):
+    # Get the Passwords collection
+    passwords_collection = db['Passwords']
 
-    if not user_exists(username):
-        conn.close()
-        print("User not found.")
+    # Delete the documents where the user_id and service_name match
+    result = passwords_collection.delete_many(
+        {'user_id': user_id, 'service_name': service_name})
+
+    if result.deleted_count:
+        print(f"{service_name} and its associated password deleted successfully.")
+        return True
+    else:
+        print(f"Failed to delete {service_name}. Service not found.")
         return False
-
-    # Delete the service and its associated passwords
-    cursor.execute(
-        "DELETE FROM Passwords WHERE user_id=(SELECT user_id FROM Users WHERE username=?) AND service_name=?", (username, service_name))
-    conn.commit()
-    conn.close()
-    return True
 
 
 if __name__ == "__main__":
