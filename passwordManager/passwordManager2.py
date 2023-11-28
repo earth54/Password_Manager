@@ -105,19 +105,19 @@ def validate_master_password(password: Any) -> Any:
 
 def create_user(username: str, master_password: Any) -> None:
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+    # conn = sqlite3.connect('password_manager.db')
+    # cursor = conn.cursor()
 
     # Check if the username already exists
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    existing_user = cursor.fetchone()
+    # cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    # existing_user = cursor.fetchone()
 
     query = {"username": f"{username}"}
     existing_user = utility.find_entries("users", "names", query)
 
     if existing_user:
         print("Username already exists. Please choose a different username.")
-        conn.close()
+        # conn.close()
 
     else:
 
@@ -128,12 +128,12 @@ def create_user(username: str, master_password: Any) -> None:
         encrypted_master_password = encrypt_password(fernet_key,
                                                      master_password)
 
-        cursor.execute("""INSERT INTO Users (username,
-                    encrypted_master_password) VALUES (?, ?)""", (
-                        username, encrypted_master_password))
-        user_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        # cursor.execute("""INSERT INTO Users (username,
+        #             encrypted_master_password) VALUES (?, ?)""", (
+        #                 username, encrypted_master_password))
+        # user_id = cursor.lastrowid
+        # conn.commit()
+        # conn.close()
 
         query.update({"master_password": f"{encrypted_master_password}"})
 
@@ -220,25 +220,32 @@ def update_user_master_password(username: str,
 
 
 def delete_user(username: str) -> Any:
-    if not user_exists(username):
+    # if not user_exists(username):
+    query = {"username": f"{username}"}
+    existing_user = utility.find_entries("users", "names", query)
+    if not existing_user:
         print("User does not exist.")
         return False
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
+    # conn = sqlite3.connect('password_manager.db')
+    # cursor = conn.cursor()
 
     # Retrieve the user's user_id
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()[0]
+    # cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    # user_id = cursor.fetchone()[0]
+
+    user_id = users.user[".id"]
 
     # Delete the user's passwords
-    cursor.execute("DELETE FROM Passwords WHERE user_id=?", (user_id,))
+    # cursor.execute("DELETE FROM Passwords WHERE user_id=?", (user_id,))
+    passwords.delete_many({"user_id": user_id})
 
     # Delete the user from the Users table
-    cursor.execute("DELETE FROM Users WHERE username=?", (username,))
+    #cursor.execute("DELETE FROM Users WHERE username=?", (username,))
+    users.delete_one({".id": user_id})
 
-    conn.commit()
-    conn.close()
+    # conn.commit()
+    # conn.close()
 
     # Remove the Fernet key file for this user (optional)
     key_filename = f"user_{user_id}_fernet.key"
