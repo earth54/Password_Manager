@@ -1,3 +1,6 @@
+"""Password manager that saves users/passwords into a MongoDB database
+"""
+
 import getpass
 import os
 import re
@@ -91,10 +94,10 @@ def validate_master_password(password: Any) -> Any:
 def create_user(username: str, master_password: Any) -> None:
 
     # Check if the username already exists
-    query = {"username": f"{username}"}
+    query = {"username": username}
     existing_user = utility.find_entries("users", "names", query)
 
-    if existing_user:
+    if existing_user != []:
         print("Username already exists. Please choose a different username.")
 
     else:
@@ -122,11 +125,11 @@ def create_user(username: str, master_password: Any) -> None:
 
 
 def authenticate_user(username: str, master_password: Any) -> Any:
-    query = {"username": f"{username}"}
+    query = {"username": username}
 
     resultMongo = utility.find_entries("users", "names", query)
 
-    if resultMongo is not None:
+    if resultMongo != []:
 
         encrypted_master_password_M = resultMongo[0]['master_password']
 
