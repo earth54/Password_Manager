@@ -35,7 +35,7 @@ def create_connection() -> int:
 
 
 def create_collection(database_name: str,
-                      collection_name: str) -> None:
+                      collection_name: str) -> str:
 
     """Creates a collection
 
