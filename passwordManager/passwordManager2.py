@@ -94,8 +94,8 @@ def validate_master_password(password: Any) -> Any:
 def create_user(username: str, master_password: Any) -> None:
 
     # Check if the username already exists
-    query = {"username": username}
-    existing_user = utility.find_entries("users", "names", query)
+    query1 = {"username": username}
+    existing_user = utility.find_entries("users", "names", query1)
 
     if existing_user != []:
         print("Username already exists. Please choose a different username.")
