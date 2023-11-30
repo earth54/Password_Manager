@@ -3,106 +3,91 @@ import getpass
 import os
 import re
 from cryptography.fernet import Fernet
-from pymongo import MongoClient
-from dotenv import load_dotenv
+from typing import Any
+
+# Function to create the database and tables
 
 
-# function to open the MongoDB connection
-def setup_connection():
-    # Load environment variables from a .env file
-    load_dotenv()
+def setup_database() -> None:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
 
-    # Retrieve the MongoDB Atlas connection string from environment variables
-    MONGODB_URI = os.getenv('MONGODB_URI')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Users (
+            user_id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL,
+            encrypted_master_password TEXT NOT NULL
+        )
+    ''')
 
-    if not MONGODB_URI:
-        raise ValueError(
-            "MongoDB connection string not found in environment variables")
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS Passwords (
+            password_id INTEGER PRIMARY KEY,
+            user_id INTEGER,
+            service_name TEXT NOT NULL,
+            username TEXT NOT NULL,
+            encrypted_password TEXT NOT NULL
+        )
+    ''')
 
-    # Assuming the '.pem' file is in the 'utility' folder within the same directory as the script
-    # Gets the directory of the script
-    script_dir = os.path.dirname(os.path.realpath(__file__))
-    # The relative path to the '.pem' file
-    pem_relative_path = 'utility/pm_cert.pem'
-    # Full path to the '.pem' file
-    pem_path = os.path.join(script_dir, pem_relative_path)
-
-    # Connect to the MongoDB Atlas cluster with X.509 authentication
-    client = MongoClient(MONGODB_URI,
-                         tls=True,
-                         tlsCertificateKeyFile=pem_path,
-                         authMechanism='MONGODB-X509')
-
-    # The database name is usually derived from the URI; otherwise, it can be set explicitly
-    DB_NAME = os.getenv('DB_NAME') or 'your_default_db_name'
-    db = client[DB_NAME]
-
-    return client, db
-
-
-# function to close the MongoDB connection
-# (when finished with all database operations)
-def close_connection(client):
-    client.close()
-
-
-# function to create a database in MongoDB
-def setup_database(db):
-    # Define the 'Users' collection and create a unique index on the 'username' field
-    users_collection = db['Users']
-    users_collection.create_index([('username', 1)], unique=True)
-
-    # Define the 'Passwords' collection and create an index on the 'user_id' field
-    passwords_collection = db['Passwords']
-    passwords_collection.create_index([('user_id', 1)])
-
-    print("Database and collections are set up in MongoDB Atlas.")
-
+    conn.commit()
+    conn.close()
 
 # Generate a unique Fernet key for the user
-def generate_user_fernet_key():
+
+
+def generate_user_fernet_key() -> Any:
     key = Fernet.generate_key()
     return key
 
-
 # Store the Fernet key locally for a user
-def store_fernet_key_locally(fernet_key, user_id):
+
+
+def store_fernet_key_locally(fernet_key: Any, user_id: Any) -> Any:
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "wb") as key_file:
         key_file.write(fernet_key)
 
-
 # Load the user's Fernet key from local storage
-def load_fernet_key_locally(user_id):
+
+
+def load_fernet_key_locally(user_id: Any) -> Any:
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "rb") as key_file:
         key = key_file.read()
     return key
 
-
 # Encrypt a password using Fernet key
-def encrypt_password(fernet_key, password):
+
+
+def encrypt_password(fernet_key: Any, password: Any) -> Any:
     fernet = Fernet(fernet_key)
     encrypted_password = fernet.encrypt(password.encode())
     return encrypted_password
 
-
 # Function to decrypt passwords
-def decrypt_password(fernet_key, encrypted_password):
+
+
+def decrypt_password(fernet_key: Any, encrypted_password: Any) -> Any:
     fernet = Fernet(fernet_key)
     decrypted_password = fernet.decrypt(encrypted_password)
     return decrypted_password.decode()
 
+# Function to check if the username already exists
 
-# Function to check if the username already exists in MongoDB
-def user_exists(username):
-    users_collection = db['Users']
-    existing_user = users_collection.find_one({'username': username})
+
+def user_exists(username: str) -> Any:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    existing_user = cursor.fetchone()
+    conn.close()
     return existing_user is not None
 
-
 # Function to validate master password strength
-def validate_master_password(password):
+
+
+def validate_master_password(password: Any) -> Any:
     if (
         len(password) >= 8
         and re.search(r'[A-Z]', password)
@@ -113,220 +98,431 @@ def validate_master_password(password):
         return True
     return False
 
+# Function to create a new user with password strength
+# and matching confirmation
 
-# Function to create a new user with password strength and matching confirmation in MongoDB
-def create_user(db, username, master_password):
-    users_collection = db['Users']
+
+def create_user(username: str, master_password: Any) -> None:
+
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
 
     # Check if the username already exists
-    if user_exists(db, username):
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    existing_user = cursor.fetchone()
+
+    if existing_user:
         print("Username already exists. Please choose a different username.")
-        return
+        conn.close()
 
-    # Generate a unique Fernet key for the user
-    fernet_key = generate_user_fernet_key()
+    else:
 
-    # Encrypt the master password using the user's Fernet key
-    encrypted_master_password = encrypt_password(fernet_key, master_password)
+        # Generate a unique Fernet key for the user
+        fernet_key = generate_user_fernet_key()
 
-    # Insert the new user document into the collection
-    users_collection.insert_one({
-        'username': username,
-        'encrypted_master_password': encrypted_master_password
-    })
+        # Encrypt the master password using the user's Fernet key
+        encrypted_master_password = encrypt_password(fernet_key,
+                                                     master_password)
 
-    user_id = users_collection.find_one({'username': username})['_id']
+        cursor.execute("""INSERT INTO Users (username,
+                    encrypted_master_password) VALUES (?, ?)""", (
+                        username, encrypted_master_password))
+        user_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
 
-    # Store the user's Fernet key locally
-    store_fernet_key_locally(fernet_key, str(user_id))
+        # Store the user's Fernet key locally
+        store_fernet_key_locally(fernet_key, user_id)
 
-    print("User created successfully")
+        print("User created successfully")
+
+# Function to authenticate a user
 
 
-# Function to authenticate a user in MongoDB
-def authenticate_user(db, username, master_password):
-    users_collection = db['Users']
-    user_document = users_collection.find_one({'username': username})
+def authenticate_user(username: str, master_password: Any) -> Any:
+    with sqlite3.connect('password_manager.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            """SELECT encrypted_master_password, user_id FROM Users
+            WHERE username=?""", (username,))
+        result = cursor.fetchone()
 
-    if user_document is not None:
-        encrypted_master_password = user_document['encrypted_master_password']
-        user_id = user_document['_id']
+    if result is not None:
+        encrypted_master_password = result[0]
+        user_id = result[1]  # Retrieve the user_id separately
 
-        fernet_key = load_fernet_key_locally(str(user_id))
+        fernet_key = load_fernet_key_locally(
+            user_id)  # Load the user's Fernet key
 
         try:
+            # Decrypt the stored master password using the user's Fernet key
             decrypted_master_password = decrypt_password(
                 fernet_key, encrypted_master_password)
-            return master_password == decrypted_master_password
+            if master_password == decrypted_master_password:
+                return True
         except Exception as e:
             print(f"Error during password decryption: {e}")
 
     return False
 
+# Function to modify the user's master password
 
-# Function to modify the user's master password in MongoDB
-def update_user_master_password(db, username, new_master_password):
+
+def update_user_master_password(username: str,
+                                new_master_password: Any) -> Any:
+    if not user_exists(username):
+        print("User does not exist.")
+        return False
+
     if not validate_master_password(new_master_password):
         print("New master password does not meet the strength requirements.")
         return False
 
-    users_collection = db['Users']
-    user_document = users_collection.find_one({'username': username})
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
 
-    if user_document:
-        user_id = user_document['_id']
-        fernet_key = load_fernet_key_locally(str(user_id))
+    # Retrieve the user's current Fernet key
+    cursor.execute(
+        """SELECT user_id, encrypted_master_password
+        FROM Users WHERE username=?""", (username,))
+    user_info = cursor.fetchone()
+    user_id = user_info[0]
+    encrypted_master_password = user_info[1]
 
-        encrypted_new_master_password = encrypt_password(
-            fernet_key, new_master_password)
+    # Decrypt the old master password
+    fernet_key = load_fernet_key_locally(user_id)
+    old_master_password = decrypt_password(
+        fernet_key, encrypted_master_password)
+    print(old_master_password)
 
-        users_collection.update_one(
-            {'_id': user_id},
-            {'$set': {'encrypted_master_password': encrypted_new_master_password}}
-        )
+    # Encrypt the new master password with the same key
+    encrypted_new_master_password = encrypt_password(
+        fernet_key, new_master_password)
 
-        return True
-    else:
+    # Update the user's master password in the database
+    cursor.execute("""UPDATE Users SET encrypted_master_password=?
+                   WHERE user_id=?""", (encrypted_new_master_password,
+                                        user_id))
+    conn.commit()
+    conn.close()
+
+    return True
+
+# Function to delete the user and their passwords
+
+
+def delete_user(username: str) -> Any:
+    if not user_exists(username):
         print("User does not exist.")
         return False
 
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
 
-# Function to delete the user and their passwords in MongoDB
-def delete_user(db, username):
-    users_collection = db['Users']
-    passwords_collection = db['Passwords']
+    # Retrieve the user's user_id
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    user_id = cursor.fetchone()[0]
 
-    user_document = users_collection.find_one({'username': username})
-    if user_document:
-        user_id = user_document['_id']
+    # Delete the user's passwords
+    cursor.execute("DELETE FROM Passwords WHERE user_id=?", (user_id,))
 
-        # Delete the user's passwords
-        passwords_collection.delete_many({'user_id': user_id})
+    # Delete the user from the Users table
+    cursor.execute("DELETE FROM Users WHERE username=?", (username,))
 
-        # Delete the user document from the Users collection
-        users_collection.delete_one({'_id': user_id})
+    conn.commit()
+    conn.close()
 
-        # Remove the Fernet key file for this user
-        key_filename = f"user_{user_id}_fernet.key"
-        if os.path.exists(key_filename):
-            os.remove(key_filename)
+    # Remove the Fernet key file for this user (optional)
+    key_filename = f"user_{user_id}_fernet.key"
+    if os.path.exists(key_filename):
+        os.remove(key_filename)
 
-        print("User and associated data deleted successfully.")
+    return True
+
+
+def add_password(username: str, service_name: str , username_entry: str,
+                 password_entry: str) -> Any:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    user_id = cursor.fetchone()
+
+    if user_id is not None:
+        # Load the user's Fernet key
+        fernet_key = load_fernet_key_locally(user_id[0])
+
+        # Encrypt the password entry using the user's Fernet key
+        encrypted_password_entry = encrypt_password(fernet_key, password_entry)
+
+        cursor.execute("""INSERT INTO Passwords (user_id, service_name,
+                       username, encrypted_password) VALUES (?, ?, ?, ?)""",
+                       (user_id[0], service_name, username_entry,
+                        encrypted_password_entry))
+        conn.commit()
+        conn.close()
         return True
     else:
+        conn.close()
+        return False
+
+# Function to retrieve password entries for a user
+
+
+def retrieve_passwords(username: str) -> Any:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    user_id = cursor.fetchone()
+
+    if user_id is not None:
+        cursor.execute(
+            "SELECT * FROM Passwords WHERE user_id=?", (user_id[0],))
+        entries = cursor.fetchall()
+
+        # Load the user's Fernet key
+        fernet_key = load_fernet_key_locally(user_id[0])
+
+        # Decrypt the encrypted password entries and display them
+        for entry in entries:
+            decrypted_password = decrypt_password(fernet_key, entry[4])
+            print(f"\nService: {entry[2]}")
+            print(f"Username: {entry[3]}")
+            print(f"Password: {decrypted_password}")
+            print()  # Add an empty line to separate entries
+
+        conn.close()
+    else:
+        conn.close()
+        print("No password entries found.")
+
+# Function to update the username and password for a service
+
+
+def update_service(username: str, service_name: str, new_username: str,
+                   new_password: str) -> Any:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
+
+    # Check if the user exists
+    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
+    user_id = cursor.fetchone()
+
+    if user_id:
+        # Load the user's Fernet key
+        fernet_key = load_fernet_key_locally(user_id[0])
+
+        # Encrypt the new username and password with the user's Fernet key
+        encrypted_new_password = encrypt_password(fernet_key, new_password)
+
+        # Update the username and password for the service
+        cursor.execute("""UPDATE Passwords SET username=?, encrypted_password=?
+                       WHERE user_id=? AND service_name=?""",
+                       (new_username, encrypted_new_password, user_id[0],
+                        service_name))
+        conn.commit()
+        conn.close()
+        return True
+    else:
+        conn.close()
         print("User not found.")
         return False
 
 
-# Function to add a password entry for a user in MongoDB
-def add_password(db, user_id, service_name, username_entry, password_entry):
-    # Load the user's Fernet key
-    fernet_key = load_fernet_key_locally(user_id)
+# Function to delete a service and its passwords
+def delete_service_and_passwords(username: str, service_name: str) -> Any:
+    conn = sqlite3.connect('password_manager.db')
+    cursor = conn.cursor()
 
-    # Encrypt the password entry using the user's Fernet key
-    encrypted_password_entry = encrypt_password(fernet_key, password_entry)
+    if not user_exists(username):
+        conn.close()
+        print("User not found.")
+        return False
 
-    # Get the Passwords collection
-    passwords_collection = db['Passwords']
-
-    # Insert the new password document into the Passwords collection
-    passwords_collection.insert_one({
-        'user_id': user_id,
-        'service_name': service_name,
-        'username': username_entry,
-        'encrypted_password': encrypted_password_entry
-    })
-    print("Password entry added successfully.")
+    # Delete the service and its associated passwords
+    cursor.execute(
+        """DELETE FROM Passwords WHERE user_id=(SELECT user_id FROM Users
+        WHERE username=?) AND service_name=?""", (username, service_name))
+    conn.commit()
+    conn.close()
     return True
 
 
-# Function to retrieve password entries for a user in MongoDB
-def retrieve_passwords(db, user_id):
-    # Get the Passwords collection
-    passwords_collection = db['Passwords']
+def main_choice_two() -> None:
+    username = input("\nEnter your username: ")
+    master_password = getpass.getpass("Enter your master password: ")
+    if authenticate_user(username, master_password):
+        print("\nLogin successful.")
+        while True:
+            print("\nUser Menu")
+            print("1. Add Password Entry")
+            print("2. Retrieve Password Entries")
+            print("3. Update a Service username and passsword")
+            print("4. Delete a Service and associated password")
+            print("5. Change Master Password")
+            print("6. Delete current User and passwords")
+            print("7. Logout")
+            user_choice = input("\nEnter your choice: ")
 
-    # Find all documents where the user_id matches
-    password_documents = passwords_collection.find({'user_id': user_id})
+            if user_choice == "1":
+                choice_one(username)
 
-    # Decrypt the encrypted password entries and display them
-    fernet_key = load_fernet_key_locally(user_id)
-    for doc in password_documents:
-        decrypted_password = decrypt_password(
-            fernet_key, doc['encrypted_password'])
-        print(f"Service: {doc['service_name']}")
-        print(f"Username: {doc['username']}")
-        print(f"Password: {decrypted_password}")
-        print()  # Add an empty line to separate entries
+            elif user_choice == "2":
+                choice_two(username)
+
+            elif user_choice == "3":
+                choice_three(username)
+
+            elif user_choice == "4":
+                choice_four(username)
+
+            elif user_choice == "5":
+                choice_five(username)
+
+            elif user_choice == "6":
+                choice_six(username)
+
+            elif user_choice == "7":
+                choice_seven()
+                break
+
+            else:
+                print("Invalid choice. Please choose a valid option.")
+
+    else:
+        print("""Login failed. Please check your username
+                and master password.""")
 
 
-# Function to update the username and password for a service in MongoDB
-def update_service(db, user_id, service_name, new_username, new_password):
-    # Get the Passwords collection
-    passwords_collection = db['Passwords']
+def choice_one(username: str) -> None:
+    # Add new Service and password
+    service_name = input("\nEnter the service name: ")
+    username_entry = input("Enter the username: ")
+    password_entry = input("Enter the password: ")
 
-    # Load the user's Fernet key
-    fernet_key = load_fernet_key_locally(user_id)
-
-    # Encrypt the new username and password with the user's Fernet key
-    encrypted_new_password = encrypt_password(fernet_key, new_password)
-
-    # Update the username and password for the service
-    result = passwords_collection.update_one(
-        {'user_id': user_id, 'service_name': service_name},
-        {'$set': {'username': new_username, 'encrypted_password': encrypted_new_password}}
-    )
-
-    if result.matched_count:
-        print(f"Password for {service_name} updated successfully.")
-        return True
+    if add_password(username, service_name, username_entry,
+                    password_entry):
+        print("\nPassword entry added successfully.")
     else:
         print(
-            f"Failed to update the password for {service_name}. Service not found.")
-        return False
+            """Failed to add password entry.
+            Please create a user first.""")
 
 
-# Function to delete a service and its passwords in MongoDB
-def delete_service_and_passwords(db, user_id, service_name):
-    # Get the Passwords collection
-    passwords_collection = db['Passwords']
+def choice_two(username: str) -> None:
+    # Display user's stored passwords
+    # entries = retrieve_passwords(username)
+    retrieve_passwords(username)
+    # if entries:
+    #     for entry in entries:
+    #         print(f"Service: {entry[2]}")
+    #         print(f"Username: {entry[3]}")
+    #         print(f"Password: {entry[4]}")
+    # else:
+    #     print("No password entries found.\n")
 
-    # Delete the documents where the user_id and service_name match
-    result = passwords_collection.delete_many(
-        {'user_id': user_id, 'service_name': service_name})
 
-    if result.deleted_count:
-        print(f"{service_name} and its associated password deleted successfully.")
-        return True
+def choice_three(username: str) -> None:
+    # Update Service username and password
+    service_name = input(
+        "\nEnter the service name you want to update: ")
+    new_username = input("Enter the new username: ")
+    new_password = getpass.getpass(
+        "Enter the new password: ")
+
+    if update_service(username, service_name, new_username, new_password):
+        print(
+            f"""\nPassword for {service_name}
+            updated successfully.""")
     else:
-        print(f"Failed to delete {service_name}. Service not found.")
-        return False
+        print(
+            f"""\nFailed to update the password for
+            {service_name}. Service not found.""")
+
+
+def choice_four(username: str) -> None:
+    # Delete Service and password
+    service_name = input(
+        "\nEnter the service name you want to delete: ")
+    confirmation = input(
+        f"\nAre you sure you want to delete the service"
+        f" {service_name}' and its associated password?"
+        " (yes/no): ")
+
+    if confirmation.lower() == "yes":
+        if delete_service_and_passwords(username,
+                                        service_name):
+            print(
+                f"""{service_name} and its associated
+                password deleted successfully.""")
+        else:
+            print(
+                f"""Failed to delete {service_name}.
+                Service not found.""")
+    else:
+        print("Service deletion canceled.")
+
+
+def choice_five(username: str) -> None:
+    # Change master password
+    new_master_password = getpass.getpass(
+        "\nEnter your new master password: ")
+
+    if update_user_master_password(username, new_master_password):
+        print("\nMaster password modified successfully.")
+    else:
+        print(
+            """\nFailed to modify master password.
+            Please create a user first.""")
+
+
+def choice_six(username: str) -> None:
+    # Delete user and all passwords
+    confirmation = input(
+        """\nAre you sure you want to delete your user
+        and all associated data? (yes/no): """)
+    if confirmation.lower() == "yes":
+        if delete_user(username):
+            print(
+                """\nUser and associated data
+                deleted successfully.""")
+
+        else:
+            print(
+                """\nFailed to delete user.
+                Please create a user first.""")
+
+    else:
+        print("\nUser deletion canceled.")
+
+
+def choice_seven() -> None:
+    # Logout
+    print("\nLogout successful.")
 
 
 if __name__ == "__main__":
-    # Setup the database connection
-    client, db = setup_connection()
-    setup_database(db)
+    setup_database()
 
     while True:
-        print("Password Manager Menu")
+        print("\nPassword Manager Menu")
         print("1. Create User")
         print("2. Login")
         print("3. Exit")
         choice = input("Enter your choice: ")
 
         if choice == "1":
-            username = input("Enter your username: ")
+            username = input("\nEnter your username: ")
 
-            print("Password must meet the following requirements:")
+            print("\nPassword must meet the following requirements:")
             print("- At least 8 characters long")
             print("- At least one uppercase letter (A-Z)")
             print("- At least one lowercase letter (a-z)")
             print("- At least one digit (0-9)")
             print("- At least one special character (@#$%^&+=!)")
 
-            master_password = getpass.getpass("Enter your master password: ")
+            master_password = getpass.getpass("\nEnter your master password: ")
             confirm_password = getpass.getpass(
-                "Confirm your master password: ")
+                "\nConfirm your master password: ")
 
             if master_password == confirm_password:
                 if validate_master_password(master_password):
@@ -337,117 +533,11 @@ if __name__ == "__main__":
                 print("Passwords do not match. Please try again")
 
         elif choice == "2":
-            username = input("Enter your username: ")
-            master_password = getpass.getpass("Enter your master password: ")
-            if authenticate_user(username, master_password):
-                print("Login successful.")
-                while True:
-                    print("User Menu")
-                    print("1. Add Password Entry")
-                    print("2. Retrieve Password Entries")
-                    print("3. Update a Service username and passsword")
-                    print("4. Delete a Service and associated password")
-                    print("5. Change Master Password")
-                    print("6. Delete current User and passwords")
-                    print("7. Logout")
-                    user_choice = input("Enter your choice: ")
-
-                    if user_choice == "1":
-                        # Add new Service and password
-                        service_name = input("Enter the service name: ")
-                        username_entry = input("Enter the username: ")
-                        password_entry = input("Enter the password: ")
-
-                        if add_password(username, service_name, username_entry, password_entry):
-                            print("Password entry added successfully.")
-                        else:
-                            print(
-                                "Failed to add password entry. Please create a user first.")
-
-                    elif user_choice == "2":
-                        # Display user's stored passwords
-                        entries = retrieve_passwords(username)
-                        if entries:
-                            for entry in entries:
-                                print(f"Service: {entry[2]}")
-                                print(f"Username: {entry[3]}")
-                                print(f"Password: {entry[4]}")
-                        else:
-                            print("No password entries found.")
-
-                    elif user_choice == "3":
-                        # Update Service username and password
-                        service_name = input(
-                            "Enter the service name you want to update: ")
-                        new_username = input("Enter the new username: ")
-                        new_password = getpass.getpass(
-                            "Enter the new password: ")
-
-                        if update_service(username, service_name, new_username, new_password):
-                            print(
-                                f"Password for {service_name} updated successfully.")
-                        else:
-                            print(
-                                f"Failed to update the password for {service_name}. Service not found.")
-
-                    elif user_choice == "4":
-                        # Delete Service and password
-                        service_name = input(
-                            "Enter the service name you want to delete: ")
-                        confirmation = input(
-                            f"Are you sure you want to delete the service '{service_name}' and its associated password? (yes/no): ")
-
-                        if confirmation.lower() == "yes":
-                            if delete_service_and_passwords(username, service_name):
-                                print(
-                                    f"{service_name} and its associated password deleted successfully.")
-                            else:
-                                print(
-                                    f"Failed to delete {service_name}. Service not found.")
-                        else:
-                            print("Service deletion canceled.")
-
-                    elif user_choice == "5":
-                        # Change master password
-                        new_master_password = getpass.getpass(
-                            "Enter your new master password: ")
-
-                        if update_user_master_password(username, new_master_password):
-                            print("Master password modified successfully.")
-                        else:
-                            print(
-                                "Failed to modify master password. Please create a user first.")
-
-                    elif user_choice == "6":
-                        # Delete user and all passwords
-                        confirmation = input(
-                            "Are you sure you want to delete your user and all associated data? (yes/no): ")
-                        if confirmation.lower() == "yes":
-                            if delete_user(username):
-                                print(
-                                    "User and associated data deleted successfully.")
-                                break
-                            else:
-                                print(
-                                    "Failed to delete user. Please create a user first.")
-                                break
-                        else:
-                            print("User deletion canceled.")
-
-                    elif user_choice == "7":
-                        # Logout
-                        print("Logout successful.")
-                        break
-
-                    else:
-                        print("Invalid choice. Please choose a valid option.")
-
-            else:
-                print("Login failed. Please check your username and master password.")
+            main_choice_two()
 
         elif choice == "3":
-            print("Goodbye!")
+            print("\nGoodbye!")
             break
 
         else:
-            print("Invalid choice. Please choose a valid option.")
+            print("\nInvalid choice. Please choose a valid option.")
