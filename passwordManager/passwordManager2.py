@@ -207,7 +207,7 @@ def delete_user(username: str) -> Any:
 def add_password(username: str, service_name: str , username_entry: str,
                  password_entry: str) -> Any:
 
-    query = {"username": f"{username}"}
+    query = {"username": username}
     existing_user = utility.find_entries("users", "names", query)
 
     if existing_user is not None:
