@@ -1,37 +1,14 @@
-import sqlite3
+"""Password manager that saves users/passwords into a MongoDB database
+"""
+
 import getpass
 import os
 import re
+from utility import utility
 from cryptography.fernet import Fernet
 from typing import Any
-
-# Function to create the database and tables
-
-
-def setup_database() -> None:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Users (
-            user_id INTEGER PRIMARY KEY,
-            username TEXT NOT NULL,
-            encrypted_master_password TEXT NOT NULL
-        )
-    ''')
-
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Passwords (
-            password_id INTEGER PRIMARY KEY,
-            user_id INTEGER,
-            service_name TEXT NOT NULL,
-            username TEXT NOT NULL,
-            encrypted_password TEXT NOT NULL
-        )
-    ''')
-
-    conn.commit()
-    conn.close()
+from rich.console import Console
+from rich.table import Table
 
 # Generate a unique Fernet key for the user
 
@@ -60,7 +37,7 @@ def load_fernet_key_locally(user_id: Any) -> Any:
 # Encrypt a password using Fernet key
 
 
-def encrypt_password(fernet_key: Any, password: Any) -> Any:
+def encrypt_password(fernet_key: Any, password: Any) -> bytes:
     fernet = Fernet(fernet_key)
     encrypted_password = fernet.encrypt(password.encode())
     return encrypted_password
@@ -77,12 +54,24 @@ def decrypt_password(fernet_key: Any, encrypted_password: Any) -> Any:
 
 
 def user_exists(username: str) -> Any:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    existing_user = cursor.fetchone()
-    conn.close()
-    return existing_user is not None
+
+    existing_user_M = utility.find_entries("users",
+                                           "names", {'username': username})
+    return existing_user_M is not None
+
+# Function to check if service name already exists
+
+
+def service_exists(username: str, service_name: str) -> Any:
+
+    existing_service = utility.find_entries("passwords",
+                                            username,
+                                            {'service_name': service_name})
+
+    if existing_service:
+        return True
+    else:
+        return False
 
 # Function to validate master password strength
 
@@ -104,66 +93,61 @@ def validate_master_password(password: Any) -> Any:
 
 def create_user(username: str, master_password: Any) -> None:
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-
     # Check if the username already exists
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    existing_user = cursor.fetchone()
+    query = {"username": username}
+    existing_user = utility.find_entries("users", "names", query)
 
-    if existing_user:
+    if existing_user != []:
         print("Username already exists. Please choose a different username.")
-        conn.close()
 
     else:
 
         # Generate a unique Fernet key for the user
-        fernet_key = generate_user_fernet_key()
+        fernet_key_M = generate_user_fernet_key()
 
         # Encrypt the master password using the user's Fernet key
-        encrypted_master_password = encrypt_password(fernet_key,
-                                                     master_password)
+        encrypted_master_password_M = encrypt_password(fernet_key_M,
+                                                       master_password)
 
-        cursor.execute("""INSERT INTO Users (username,
-                    encrypted_master_password) VALUES (?, ?)""", (
-                        username, encrypted_master_password))
-        user_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
+        query.update({"master_password": encrypted_master_password_M})
+
+        # add api to make username unique
+
+        utility.insert_entry("users", "names", query)
 
         # Store the user's Fernet key locally
-        store_fernet_key_locally(fernet_key, user_id)
+        store_fernet_key_locally(fernet_key_M, username)
 
-        print("User created successfully")
+        print("\nUser created successfully")
+
 
 # Function to authenticate a user
 
 
 def authenticate_user(username: str, master_password: Any) -> Any:
-    with sqlite3.connect('password_manager.db') as conn:
-        cursor = conn.cursor()
-        cursor.execute(
-            """SELECT encrypted_master_password, user_id FROM Users
-            WHERE username=?""", (username,))
-        result = cursor.fetchone()
+    query = {"username": username}
 
-    if result is not None:
-        encrypted_master_password = result[0]
-        user_id = result[1]  # Retrieve the user_id separately
+    resultMongo = utility.find_entries("users", "names", query)
 
-        fernet_key = load_fernet_key_locally(
-            user_id)  # Load the user's Fernet key
+    if resultMongo != []:
 
+        encrypted_master_password_M = resultMongo[0]['master_password']
+
+        object_id_M = resultMongo[0]['username']
+
+        fernet_key_M = load_fernet_key_locally(
+            object_id_M)  # Load the user's Fernet key
+
+        decrypted_master_password_M = decrypt_password(
+            fernet_key_M, encrypted_master_password_M)
         try:
-            # Decrypt the stored master password using the user's Fernet key
-            decrypted_master_password = decrypt_password(
-                fernet_key, encrypted_master_password)
-            if master_password == decrypted_master_password:
+            if master_password == decrypted_master_password_M:
                 return True
         except Exception as e:
             print(f"Error during password decryption: {e}")
 
     return False
+
 
 # Function to modify the user's master password
 
@@ -178,35 +162,25 @@ def update_user_master_password(username: str,
         print("New master password does not meet the strength requirements.")
         return False
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-
-    # Retrieve the user's current Fernet key
-    cursor.execute(
-        """SELECT user_id, encrypted_master_password
-        FROM Users WHERE username=?""", (username,))
-    user_info = cursor.fetchone()
-    user_id = user_info[0]
-    encrypted_master_password = user_info[1]
+    user_info_M = utility.find_entries("users", "names",
+                                       {'username': username})
 
     # Decrypt the old master password
-    fernet_key = load_fernet_key_locally(user_id)
-    old_master_password = decrypt_password(
-        fernet_key, encrypted_master_password)
-    print(old_master_password)
+    fernet_key_M = load_fernet_key_locally(user_info_M[0]['username'])
 
     # Encrypt the new master password with the same key
-    encrypted_new_master_password = encrypt_password(
-        fernet_key, new_master_password)
+    encrypted_new_master_password_M = encrypt_password(
+        fernet_key_M, new_master_password)
 
     # Update the user's master password in the database
-    cursor.execute("""UPDATE Users SET encrypted_master_password=?
-                   WHERE user_id=?""", (encrypted_new_master_password,
-                                        user_id))
-    conn.commit()
-    conn.close()
+    old_data = {'username': username,
+                'master_password': user_info_M[0]['master_password']}
+    new_data = {'username': username,
+                'master_password': encrypted_new_master_password_M}
+    utility.update_entry("users", "names", old_data, new_data)
 
     return True
+
 
 # Function to delete the user and their passwords
 
@@ -216,134 +190,141 @@ def delete_user(username: str) -> Any:
         print("User does not exist.")
         return False
 
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-
-    # Retrieve the user's user_id
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()[0]
-
-    # Delete the user's passwords
-    cursor.execute("DELETE FROM Passwords WHERE user_id=?", (user_id,))
+    # Delete the user's passwords collection
+    utility.delete_collection("passwords", username)
 
     # Delete the user from the Users table
-    cursor.execute("DELETE FROM Users WHERE username=?", (username,))
-
-    conn.commit()
-    conn.close()
+    utility.delete_entry("users", "names", {'username': username})
 
     # Remove the Fernet key file for this user (optional)
-    key_filename = f"user_{user_id}_fernet.key"
+    key_filename = f"user_{username}_fernet.key"
     if os.path.exists(key_filename):
         os.remove(key_filename)
 
     return True
 
 
-def add_password(username: str, service_name: str , username_entry: str,
+def add_password(username: str, service_name: str, username_entry: str,
                  password_entry: str) -> Any:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
 
-    if user_id is not None:
+    query = {"username": f"{username}"}
+    existing_user = utility.find_entries("users", "names", query)
+
+    if existing_user is not None:
+
         # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+        fernet_key_M = load_fernet_key_locally(existing_user[0]['username'])
 
         # Encrypt the password entry using the user's Fernet key
-        encrypted_password_entry = encrypt_password(fernet_key, password_entry)
+        encrypted_password_entry_M = encrypt_password(
+            fernet_key_M, password_entry)
 
-        cursor.execute("""INSERT INTO Passwords (user_id, service_name,
-                       username, encrypted_password) VALUES (?, ?, ?, ?)""",
-                       (user_id[0], service_name, username_entry,
-                        encrypted_password_entry))
-        conn.commit()
-        conn.close()
+        query = {"username": existing_user[0]['username'],
+                 "service_name": service_name,
+                 "username_entry": username_entry,
+                 "password_entry": encrypted_password_entry_M}
+
+        utility.insert_entry("passwords", existing_user[0]['username'], query)
+
         return True
     else:
-        conn.close()
         return False
+
 
 # Function to retrieve password entries for a user
 
 
 def retrieve_passwords(username: str) -> Any:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
+    user_id_M = utility.find_entries("users", "names", {"username": username})
 
-    if user_id is not None:
-        cursor.execute(
-            "SELECT * FROM Passwords WHERE user_id=?", (user_id[0],))
-        entries = cursor.fetchall()
+    if user_id_M is not None:
+        entries_M = utility.find_entries("passwords", username)
+
+        print()
+        table = Table(title=f"Entries for {username} ")
+
+        table.add_column("Service", justify="left", style="cyan", no_wrap=True)
+        table.add_column("Username", style="magenta")
+        table.add_column("Password", justify="left", style="green")
 
         # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+        fernet_key_M = load_fernet_key_locally(user_id_M[0]['username'])
 
-        # Decrypt the encrypted password entries and display them
-        for entry in entries:
-            decrypted_password = decrypt_password(fernet_key, entry[4])
-            print(f"\nService: {entry[2]}")
-            print(f"Username: {entry[3]}")
-            print(f"Password: {decrypted_password}")
-            print()  # Add an empty line to separate entries
+        for entry in entries_M:
+            decrypted_password_M = decrypt_password(fernet_key_M,
+                                                    entry['password_entry'])
+            # print(f"\nService: {entry['service_name']}")
+            # print(f"Username: {entry['username_entry']}")
+            # print(f"Password: {decrypted_password_M}")
+            # print()  # Add an empty line to separate entries
 
-        conn.close()
+            table.add_row(entry['service_name'], entry['username_entry'],
+                          decrypted_password_M)
+
+        console = Console()
+        console.print(table)
+
+        input("Press enter to continue....")
+
     else:
-        conn.close()
-        print("No password entries found.")
+        print("\nNo password entries found.")
+
 
 # Function to update the username and password for a service
 
 
 def update_service(username: str, service_name: str, new_username: str,
                    new_password: str) -> Any:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
 
     # Check if the user exists
-    cursor.execute("SELECT user_id FROM Users WHERE username=?", (username,))
-    user_id = cursor.fetchone()
+    user_id_M = utility.find_entries("users", "names", {"username": username})
 
-    if user_id:
+    if user_id_M:
         # Load the user's Fernet key
-        fernet_key = load_fernet_key_locally(user_id[0])
+        fernet_key_M = load_fernet_key_locally(user_id_M[0]['username'])
 
         # Encrypt the new username and password with the user's Fernet key
-        encrypted_new_password = encrypt_password(fernet_key, new_password)
+        encrypted_new_password_M = encrypt_password(fernet_key_M, new_password)
 
-        # Update the username and password for the service
-        cursor.execute("""UPDATE Passwords SET username=?, encrypted_password=?
-                       WHERE user_id=? AND service_name=?""",
-                       (new_username, encrypted_new_password, user_id[0],
-                        service_name))
-        conn.commit()
-        conn.close()
-        return True
+        # Fine the entires with the service_name
+        user_id_M = utility.find_entries("passwords", user_id_M[0]['username'],
+                                         {"service_name": service_name})
+
+        if user_id_M:
+            # Update the username and password for the service
+            old_data = {'service_name': service_name,
+                        'username_entry': user_id_M[0]['username_entry'],
+                        'password_entry': user_id_M[0]['password_entry']}
+            new_data = {'service_name': service_name,
+                        'username_entry': new_username,
+                        'password_entry': encrypted_new_password_M}
+            utility.update_entry("passwords",
+                                 user_id_M[0]['username'], old_data, new_data)
+
+            return True
+        else:
+            return False
+
     else:
-        conn.close()
         print("User not found.")
         return False
 
 
 # Function to delete a service and its passwords
-def delete_service_and_passwords(username: str, service_name: str) -> Any:
-    conn = sqlite3.connect('password_manager.db')
-    cursor = conn.cursor()
 
-    if not user_exists(username):
-        conn.close()
-        print("User not found.")
+
+def delete_service_and_passwords(username: str, service_name: str) -> Any:
+
+    return_entry = service_exists(username, service_name)
+
+    # If service name does not exist return false
+    if return_entry is False:
         return False
 
+    # If service name exists delete entry
     # Delete the service and its associated passwords
-    cursor.execute(
-        """DELETE FROM Passwords WHERE user_id=(SELECT user_id FROM Users
-        WHERE username=?) AND service_name=?""", (username, service_name))
-    conn.commit()
-    conn.close()
+    utility.delete_entry("passwords", username, {'service_name': service_name})
+
     return True
 
 
@@ -380,6 +361,7 @@ def main_choice_two() -> None:
 
             elif user_choice == "6":
                 choice_six(username)
+                break
 
             elif user_choice == "7":
                 choice_seven()
@@ -389,8 +371,8 @@ def main_choice_two() -> None:
                 print("Invalid choice. Please choose a valid option.")
 
     else:
-        print("""Login failed. Please check your username
-                and master password.""")
+        print('Login failed. Please check your username'
+              'and master password.')
 
 
 def choice_one(username: str) -> None:
@@ -410,15 +392,7 @@ def choice_one(username: str) -> None:
 
 def choice_two(username: str) -> None:
     # Display user's stored passwords
-    # entries = retrieve_passwords(username)
     retrieve_passwords(username)
-    # if entries:
-    #     for entry in entries:
-    #         print(f"Service: {entry[2]}")
-    #         print(f"Username: {entry[3]}")
-    #         print(f"Password: {entry[4]}")
-    # else:
-    #     print("No password entries found.\n")
 
 
 def choice_three(username: str) -> None:
@@ -426,17 +400,18 @@ def choice_three(username: str) -> None:
     service_name = input(
         "\nEnter the service name you want to update: ")
     new_username = input("Enter the new username: ")
-    new_password = getpass.getpass(
-        "Enter the new password: ")
+    new_password = input("Enter the new password: ")
+    # new_password = getpass.getpass(
+    #     "Enter the new password: ")
 
     if update_service(username, service_name, new_username, new_password):
         print(
-            f"""\nPassword for {service_name}
-            updated successfully.""")
+            f'\nPassword for {service_name} '
+            'updated successfully.')
     else:
         print(
-            f"""\nFailed to update the password for
-            {service_name}. Service not found.""")
+            '\nFailed to update the password for '
+            f'{service_name}. Service not found.')
 
 
 def choice_four(username: str) -> None:
@@ -449,15 +424,15 @@ def choice_four(username: str) -> None:
         " (yes/no): ")
 
     if confirmation.lower() == "yes":
-        if delete_service_and_passwords(username,
-                                        service_name):
+        return_entry = delete_service_and_passwords(username, service_name)
+        if return_entry is True:
             print(
-                f"""{service_name} and its associated
-                password deleted successfully.""")
+                f'Service {service_name} and its associated'
+                ' password deleted successfully.')
         else:
             print(
-                f"""Failed to delete {service_name}.
-                Service not found.""")
+                f'Failed to delete {service_name}.'
+                ' Service not found.')
     else:
         print("Service deletion canceled.")
 
@@ -471,25 +446,25 @@ def choice_five(username: str) -> None:
         print("\nMaster password modified successfully.")
     else:
         print(
-            """\nFailed to modify master password.
-            Please create a user first.""")
+            '\nFailed to modify master password.'
+            'Please create a user first.')
 
 
 def choice_six(username: str) -> None:
     # Delete user and all passwords
     confirmation = input(
-        """\nAre you sure you want to delete your user
-        and all associated data? (yes/no): """)
+        '\nAre you sure you want to delete your user'
+        'and all associated data? (yes/no): ')
     if confirmation.lower() == "yes":
         if delete_user(username):
             print(
-                """\nUser and associated data
-                deleted successfully.""")
+                '\nUser and associated data'
+                ' deleted successfully.')
 
         else:
             print(
-                """\nFailed to delete user.
-                Please create a user first.""")
+                '\nFailed to delete user.'
+                'Please create a user first.')
 
     else:
         print("\nUser deletion canceled.")
@@ -500,8 +475,8 @@ def choice_seven() -> None:
     print("\nLogout successful.")
 
 
-if __name__ == "__main__":
-    setup_database()
+def main():
+    # setup_database()
 
     while True:
         print("\nPassword Manager Menu")
@@ -541,3 +516,8 @@ if __name__ == "__main__":
 
         else:
             print("\nInvalid choice. Please choose a valid option.")
+
+
+if __name__ == "__main__":
+
+    main()
