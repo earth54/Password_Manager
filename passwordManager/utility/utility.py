@@ -8,12 +8,13 @@ from pymongo.errors import OperationFailure
 from typing import Any, Dict, List
 
 uri = 'mongodb+srv://cluster1.cjufb6h.mongodb.net/?authSource=%24external'  \
-    '&authMechanism=MONGODB-X509&retryWrites=true&w=majority'
+        '&authMechanism=MONGODB-X509&retryWrites=true&w=majority'
 
-path_to_certificate = 'utility/pm_cert.pem'
+path_to_certificate = 'pm_cert.pem'
 
 
-def create_connection() -> int:
+def create_connection() -> Any:
+
     """Creates connection to MongoDB database
 
     Raises:
@@ -28,14 +29,14 @@ def create_connection() -> int:
         db = client['testDB']
         collection = db['testCol']
         doc_count = collection.count_documents({})
-        return doc_count  # Should print 0 as the testDB doesn't exist
+        print(doc_count)  # Should print 0 as the testDB doesn't exist
     except errors.ConnectionFailure as ex:
         print(ex)
         raise ex
 
 
 def create_collection(database_name: str,
-                      collection_name: str) -> str:
+                      collection_name: str) -> None:
 
     """Creates a collection
 
@@ -54,14 +55,14 @@ def create_collection(database_name: str,
     try:
         db = client[database_name]
         db.create_collection(collection_name)
-        return db.list_collection_names()
     except OperationFailure as ex:
         print(ex)
         raise ex
 
 
 def insert_entry(database_name: str,
-                 collection_name: str, entry: Dict[str, Any]) -> None:
+                 collection_name: str, entry: List[Any]) -> None:
+
     """Inserts one {key: value} pair into collection
 
     Args:
@@ -81,7 +82,8 @@ def insert_entry(database_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.insert_one(entry)
+        result = collection.insert_one(entry)
+        print(result.inserted_id)  # prints inserted _id
     except OperationFailure as ex:
         print(ex)
         raise ex
@@ -89,6 +91,7 @@ def insert_entry(database_name: str,
 
 def insert_entries(database_name: str, collection_name: str,
                    entries: List[Any]) -> None:
+
     """Inserts mutltiple {key: value} entries into collection as long as they
         are in a list
 
@@ -109,7 +112,8 @@ def insert_entries(database_name: str, collection_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.insert_many(entries)
+        result = collection.insert_many(entries)
+        print(result.inserted_ids)  # prints inserted _ids
     except OperationFailure as ex:
         print(ex)
         raise ex
@@ -117,6 +121,7 @@ def insert_entries(database_name: str, collection_name: str,
 
 def find_entries(database_name: str, collection_name: str,
                  entries: Dict[str, Any] | None = None) -> Any:
+
     """Finds {key: value} listings in a collection
 
     Args:
@@ -162,6 +167,7 @@ def find_entries(database_name: str, collection_name: str,
 
 def update_entry(database_name: str, collection_name: str,
                  old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
+
     """Finds the first matching key of {key: value} filter and
         updates the value
 
@@ -185,7 +191,9 @@ def update_entry(database_name: str, collection_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.update_one(old_data, {"$set": new_data})
+        updated_data = collection.update_one(old_data, {"$set": new_data})
+        # prints the number of {key: value} affected
+        print(updated_data.modified_count)
     except OperationFailure as ex:
         print(ex)
         raise ex
@@ -193,6 +201,7 @@ def update_entry(database_name: str, collection_name: str,
 
 def update_entries(database_name: str, collection_name: str,
                    old_data: Dict[str, Any], new_data: Dict[str, Any]) -> None:
+
     """Finds the all matching keys of {key: value} filter and updates the
         values
 
@@ -215,7 +224,9 @@ def update_entries(database_name: str, collection_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.update_many(old_data, {"$set": new_data})
+        updated_data = collection.update_many(old_data, {"$set": new_data})
+        # prints the number of {key: value} pairs affected
+        print(updated_data.modified_count)
     except OperationFailure as ex:
         print(ex)
         raise ex
@@ -223,6 +234,7 @@ def update_entries(database_name: str, collection_name: str,
 
 def delete_entry(database_name: str, collection_name: str,
                  old_data: Dict[str, Any]) -> None:
+
     """Deletes the first matching {key: value} filter entry
 
     Args:
@@ -242,7 +254,8 @@ def delete_entry(database_name: str, collection_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.delete_one(old_data)
+        result = collection.delete_one(old_data)
+        print(result.deleted_count)  # prints the number of deleted entries
     except OperationFailure as ex:
         print(ex)
         raise ex
@@ -250,6 +263,7 @@ def delete_entry(database_name: str, collection_name: str,
 
 def delete_entries(database_name: str, collection_name: str,
                    old_data: Dict[str, Any]) -> None:
+
     """Deletes entries matching {key: value} filter
 
     Args:
@@ -269,31 +283,8 @@ def delete_entries(database_name: str, collection_name: str,
     try:
         db = client[database_name]
         collection = db[collection_name]
-        collection.delete_many(old_data)
-    except OperationFailure as ex:
-        print(ex)
-        raise ex
-
-
-def delete_collection(database_name: str, collection_name: str) -> None:
-    """Deletes a collection
-
-    Args:
-        database_name (str): Name of MongoDB database
-        collection_name (str): Name of MongoDB collection
-
-    Raises:
-        ex: Raises an error if found
-    """
-
-    client = MongoClient(uri, tls=True,
-                         tlsCertificateKeyFile=path_to_certificate,
-                         server_api=ServerApi('1'))   # type: Any
-
-    try:
-        db = client[database_name]
-        collection = db[collection_name]
-        collection.drop()
+        result = collection.delete_many(old_data)
+        print(result.deleted_count)  # prints the number of deleted entries
     except OperationFailure as ex:
         print(ex)
         raise ex
