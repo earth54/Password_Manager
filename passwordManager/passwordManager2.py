@@ -109,7 +109,8 @@ def create_user(username: str, master_password: Any) -> None:
         encrypted_master_password_M = encrypt_password(fernet_key_M,
                                                        master_password)
 
-        query.update({"master_password": encrypted_master_password_M})
+        query = ({"username": username, 
+                  "master_password": encrypted_master_password_M})
 
         # add api to make username unique
 
@@ -207,8 +208,8 @@ def delete_user(username: str) -> Any:
 def add_password(username: str, service_name: str , username_entry: str,
                  password_entry: str) -> Any:
 
-    query = {"username": username}
-    existing_user = utility.find_entries("users", "names", query)
+    query1 = {"username": username}
+    existing_user = utility.find_entries("users", "names", query1)
 
     if existing_user is not None:
 
