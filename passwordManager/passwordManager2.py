@@ -475,7 +475,7 @@ def choice_seven() -> None:
     print("\nLogout successful.")
 
 
-def main():
+def main() -> None:
     # setup_database()
 
     while True:
