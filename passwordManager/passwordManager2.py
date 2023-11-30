@@ -109,7 +109,7 @@ def create_user(username: str, master_password: Any) -> None:
         encrypted_master_password_M = encrypt_password(fernet_key_M,
                                                        master_password)
 
-        query = ({"username": username, 
+        query = ({"username": username,
                   "master_password": encrypted_master_password_M})
 
         # add api to make username unique
