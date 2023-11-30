@@ -9,6 +9,7 @@ from cryptography.fernet import Fernet
 from typing import Any
 from rich.console import Console
 from rich.table import Table
+from rich import print
 
 # Generate a unique Fernet key for the user
 
@@ -478,8 +479,11 @@ def choice_seven() -> None:
 def main():
     # setup_database()
 
+    # rich UI
+    console = Console()
+
     while True:
-        print("\nPassword Manager Menu")
+        console.print("\n[italic purple]Password Manager Menu")
         print("1. Create User")
         print("2. Login")
         print("3. Exit")
