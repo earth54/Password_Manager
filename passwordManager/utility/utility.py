@@ -13,7 +13,7 @@ uri = 'mongodb+srv://cluster1.cjufb6h.mongodb.net/?authSource=%24external'  \
 path_to_certificate = 'utility/pm_cert.pem'
 
 
-def create_connection() -> int:
+def create_connection() -> Any:
     """Creates connection to MongoDB database
 
     Raises:
@@ -28,14 +28,15 @@ def create_connection() -> int:
         db = client['testDB']
         collection = db['testCol']
         doc_count = collection.count_documents({})
-        return doc_count  # Should return 0 as the testDB doesn't exist
+        return int(doc_count)  # Should print 0 as the testDB doesn't exist
     except errors.ConnectionFailure as ex:
         print(ex)
         raise ex
 
 
 def create_collection(database_name: str,
-                      collection_name: str) -> str:
+                      collection_name: str) -> Any:
+
     """Creates a collection
 
     Args:
