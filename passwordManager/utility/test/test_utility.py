@@ -15,7 +15,7 @@ class YourTestCase(unittest.TestCase):
         pass
         # collection_name = "test_collection"
 
-    def tearDown(self):
+    def tearDown(self) -> None:
         """Teardown if needed
         """
         # Clean up resources if needed
