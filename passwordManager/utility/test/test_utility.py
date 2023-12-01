@@ -42,7 +42,6 @@ class YourTestCase(unittest.TestCase):
 
         # Test to make sure collection name is added
         self.assertEqual(names, [collection])
-
         utility.delete_collection(database, collection)
 
     def test_insert_entry(self) -> None:
