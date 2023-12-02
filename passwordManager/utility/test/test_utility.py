@@ -3,7 +3,7 @@ Test module for utility.py
 """
 
 import unittest
-import utility
+from passwordManager.utility import utility
 
 
 class TestUtility(unittest.TestCase):
