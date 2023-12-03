@@ -373,7 +373,7 @@ def main_choice_two() -> None:
 
     else:
         print('Login failed. Please check your username'
-              'and master password.')
+              ' and master password.')
 
 
 def choice_one(username: str) -> None:
@@ -483,7 +483,7 @@ def main():
     console = Console()
 
     while True:
-        console.print("\n[italic purple]Password Manager Menu")
+        console.print("\n[blue]Password Manager Menu")
         print("1. Create User")
         print("2. Login")
         print("3. Exit")
