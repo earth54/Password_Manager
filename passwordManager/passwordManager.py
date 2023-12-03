@@ -495,7 +495,8 @@ def main():
 
     while True:
         clear_screen()
-        console.print("\n[blue]Password Manager Menu")
+        console.print("\nPassword Manager Menu",
+                      style="bold red u")
         print("1. Create User")
         print("2. Login")
         print("3. Exit")
