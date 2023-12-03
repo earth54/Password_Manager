@@ -10,6 +10,8 @@ from typing import Any
 from rich.console import Console
 from rich.table import Table
 from rich import print
+import platform
+import subprocess
 
 # Generate a unique Fernet key for the user
 
@@ -476,6 +478,15 @@ def choice_seven() -> None:
     print("\nLogout successful.")
 
 
+def clear_screen():
+    # For Windows
+    if platform.system() == "Windows":
+        subprocess.call('cls', shell=True)
+    # For macOS and Linux (os.name is 'posix' for both)
+    else:
+        subprocess.call('clear', shell=True)
+
+
 def main():
     # setup_database()
 
@@ -483,6 +494,7 @@ def main():
     console = Console()
 
     while True:
+        clear_screen()
         console.print("\n[blue]Password Manager Menu")
         print("1. Create User")
         print("2. Login")
