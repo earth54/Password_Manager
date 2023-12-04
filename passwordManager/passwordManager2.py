@@ -258,7 +258,6 @@ def update_service(username: str, service_name: str, new_username: str,
         # Fine the entires with the service_name
         user_id_M = utility.find_entries("passwords", user_id_M[0]['username'],
                                          {"service_name": service_name})
-
         if user_id_M:
             # Update the username and password for the service
             old_data = {'service_name': service_name,
