@@ -10,17 +10,22 @@ from rich.table import Table
 console=Console()
 
 # Generate a unique Fernet key for the user
+
 def generate_user_fernet_key() -> Any:
     key = Fernet.generate_key()
     return key
 
 # Store the Fernet key locally for a user
+
+
 def store_fernet_key_locally(fernet_key: Any, user_id: Any) -> Any:
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "wb") as key_file:
         key_file.write(fernet_key)
 
 # Load the user's Fernet key from local storage
+
+
 def load_fernet_key_locally(user_id: Any) -> Any:
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "rb") as key_file:
@@ -28,18 +33,24 @@ def load_fernet_key_locally(user_id: Any) -> Any:
     return key
 
 # Encrypt a password using Fernet key
+
+
 def encrypt_password(fernet_key: Any, password: Any) -> bytes:
     fernet = Fernet(fernet_key)
     encrypted_password = fernet.encrypt(password.encode())
     return encrypted_password
 
 # Function to decrypt passwords
+
+
 def decrypt_password(fernet_key: Any, encrypted_password: Any) -> Any:
     fernet = Fernet(fernet_key)
     decrypted_password = fernet.decrypt(encrypted_password)
     return decrypted_password.decode()
 
 # Function to check if the username already exists
+
+
 def user_exists(username: str) -> Any:
 
     existing_user_M = utility.find_entries("users",
@@ -47,6 +58,8 @@ def user_exists(username: str) -> Any:
     return existing_user_M is not None
 
 # Function to check if service name already exists
+
+
 def service_exists(username: str, service_name: str) -> Any:
 
     existing_service = utility.find_entries("passwords",
@@ -59,6 +72,8 @@ def service_exists(username: str, service_name: str) -> Any:
         return False
 
 # Function to validate master password strength
+
+
 def validate_master_password(password: Any) -> Any:
     if (
         len(password) >= 8
@@ -72,6 +87,8 @@ def validate_master_password(password: Any) -> Any:
 
 # Function to create a new user with password strength
 # and matching confirmation
+
+
 def create_user(username: str, master_password: Any) -> None:
 
     # Check if the username already exists
@@ -79,7 +96,7 @@ def create_user(username: str, master_password: Any) -> None:
     existing_user = utility.find_entries("users", "names", query)
 
     if existing_user:
-        print("Username already exists. Please choose a different username.")
+        console.print("[bold red underline]Username already exists. Please choose a different username.")
 
     else:
 
@@ -93,15 +110,18 @@ def create_user(username: str, master_password: Any) -> None:
         query.update({"master_password": encrypted_master_password_M})
 
         # add api to make username unique
+
         utility.insert_entry("users", "names", query)
 
         # Store the user's Fernet key locally
         store_fernet_key_locally(fernet_key_M, username)
 
-        print("\nUser created successfully")
+        console.print("\n[bold green underline]User created successfully")
 
 
 # Function to authenticate a user
+
+
 def authenticate_user(username: str, master_password: Any) -> Any:
     query = {"username": f"{username}"}
 
@@ -122,20 +142,22 @@ def authenticate_user(username: str, master_password: Any) -> Any:
             if master_password == decrypted_master_password_M:
                 return True
         except Exception as e:
-            print(f"Error during password decryption: {e}")
+            console.print(f"[bold red underline]Error during password decryption: {e}")
 
     return False
 
 
 # Function to modify the user's master password
+
+
 def update_user_master_password(username: str,
                                 new_master_password: Any) -> Any:
     if not user_exists(username):
-        print("User does not exist.")
+        console.print("[bold red underline]User does not exist.")
         return False
 
     if not validate_master_password(new_master_password):
-        print("New master password does not meet the strength requirements.")
+        console.print("[bold red underline]New master password does not meet the strength requirements.")
         return False
 
     user_info_M = utility.find_entries("users", "names",
@@ -159,9 +181,11 @@ def update_user_master_password(username: str,
 
 
 # Function to delete the user and their passwords
+
+
 def delete_user(username: str) -> Any:
     if not user_exists(username):
-        print("User does not exist.")
+        console.print("[bold red underline]User does not exist.")
         return False
 
     # Delete the user's passwords collection
@@ -206,6 +230,8 @@ def add_password(username: str, service_name: str , username_entry: str,
 
 
 # Function to retrieve password entries for a user
+
+
 def retrieve_passwords(username: str) -> Any:
     user_id_M = utility.find_entries("users", "names", {"username": username})
 
@@ -235,13 +261,15 @@ def retrieve_passwords(username: str) -> Any:
 
         console.print(table)
 
-        input("Press enter to continue....")
+        console.input("[bold dodger_blue1 underline]Press enter to continue....")
 
     else:
-        print("\nNo password entries found.")
+        console.print("\n[bold red underline]No password entries found.")
 
 
 # Function to update the username and password for a service
+
+
 def update_service(username: str, service_name: str, new_username: str,
                    new_password: str) -> Any:
 
@@ -258,6 +286,7 @@ def update_service(username: str, service_name: str, new_username: str,
         # Fine the entires with the service_name
         user_id_M = utility.find_entries("passwords", user_id_M[0]['username'],
                                          {"service_name": service_name})
+
         if user_id_M:
             # Update the username and password for the service
             old_data = {'service_name': service_name,
@@ -274,11 +303,13 @@ def update_service(username: str, service_name: str, new_username: str,
             return False
 
     else:
-        print("User not found.")
+        console.print("[bold red underline]User not found.")
         return False
 
 
 # Function to delete a service and its passwords
+
+
 def delete_service_and_passwords(username: str, service_name: str) -> Any:
 
     return_entry = service_exists(username, service_name)
@@ -314,7 +345,7 @@ def main_choice_two() -> None:
         console.print("\n[bold green underline]Login successful.")
 
         while True:
-            console.print("\n[bright_cyan underline]User Menu")
+            console.print("\n[bold dodger_blue1 underline]User Menu")
 
             # Print menu options with cyan text, and dim every other option
             console.print("[cyan]1. Add Password Entry")
@@ -325,7 +356,7 @@ def main_choice_two() -> None:
             console.print("[magenta]6. Delete current User and passwords")
             console.print("[cyan]7. Logout")
 
-            user_choice = console.input("\n[bold green underline]Enter your choice: ")
+            user_choice = console.input("\n[bold dodger_blue1 underline]Enter your choice: ")
 
             if user_choice == "1":
                 choice_one(username)
@@ -364,10 +395,10 @@ def choice_one(username: str) -> None:
 
     if add_password(username, service_name, username_entry,
                     password_entry):
-        print("\nPassword entry added successfully.")
+        console.print("\n[bold green underline]Password entry added successfully.")
     else:
-        print(
-            """Failed to add password entry.
+        console.print(
+            """[bold red underline]Failed to add password entry.
             Please create a user first.""")
 
 
@@ -378,82 +409,82 @@ def choice_two(username: str) -> None:
 
 def choice_three(username: str) -> None:
     # Update Service username and password
-    service_name = input(
-        "\nEnter the service name you want to update: ")
-    new_username = input("Enter the new username: ")
-    new_password = input("Enter the new password: ")
+    service_name = console.input(
+        "\n[bold orange1 underline]Enter the service name you want to update: ")
+    new_username = console.input("[bold orange1 underline]Enter the new username: ")
+    new_password = console.input("[bold orange1 underline]Enter the new password: ")
     # new_password = getpass.getpass(
     #     "Enter the new password: ")
 
     if update_service(username, service_name, new_username, new_password):
         console.print(
-            f'\nPassword for {service_name} '
+            f'\n[bold green underline]Password for {service_name} '
             'updated successfully.')
     else:
-        print(
-            '\nFailed to update the password for '
+        console.print(
+            '\n[bold red underline]Failed to update the password for '
             f'{service_name}. Service not found.')
 
 
 def choice_four(username: str) -> None:
     # Delete Service and password
-    service_name = input(
-        "\nEnter the service name you want to delete: ")
-    confirmation = input(
-        f"\nAre you sure you want to delete the service"
+    service_name = console.input(
+        "\n[bold dodger_blue1 underline]Enter the service name you want to delete: ")
+    confirmation = console.input(
+        f"\n[bold red underline]Are you sure you want to delete the service"
         f" {service_name}' and its associated password?"
         " (yes/no): ")
 
     if confirmation.lower() == "yes":
         return_entry = delete_service_and_passwords(username, service_name)
         if return_entry is True:
-            print(
-                f'Service {service_name} and its associated'
+            console.print(
+                f'[bold bright_yellow underline]Service {service_name} and its associated'
                 ' password deleted successfully.')
         else:
-            print(
-                f'Failed to delete {service_name}.'
+            console.print(
+                f'[bold red underline]Failed to delete {service_name}.'
                 ' Service not found.')
     else:
-        print("Service deletion canceled.")
+        console.print("[bold orange1 underline]Service deletion canceled.")
 
 
 def choice_five(username: str) -> None:
     # Change master password
-    new_master_password = getpass.getpass(
-        "\nEnter your new master password: ")
+    console.print("\n[bold orange1 underline]Enter your new master password: ")
+    new_master_password = getpass.getpass("")
 
     if update_user_master_password(username, new_master_password):
-        print("\nMaster password modified successfully.")
+        console.print("\n[bold green underline]Master password modified successfully.")
     else:
-        print(
-            '\nFailed to modify master password.'
+        console.print(
+            '\n[bold red underline]Failed to modify master password.'
             'Please create a user first.')
 
 
 def choice_six(username: str) -> None:
     # Delete user and all passwords
-    confirmation = input(
-        '\nAre you sure you want to delete your user'
+    confirmation = console.input(
+        '\n[[bold red underline]Are you sure you want to delete your user'
         'and all associated data? (yes/no): ')
     if confirmation.lower() == "yes":
         if delete_user(username):
-            print(
-                '\nUser and associated data'
+            console.print(
+                '\n[bold green underline]User and associated data'
                 ' deleted successfully.')
 
         else:
-            print(
-                '\nFailed to delete user.'
+            console.print(
+                '\n[bold red underline]Failed to delete user.'
                 'Please create a user first.')
 
     else:
-        print("\nUser deletion canceled.")
+        console.print("\n[bold orange1 underline]User deletion canceled.")
 
 
 def choice_seven() -> None:
     # Logout
-    print("\nLogout successful.")
+    console.print("\n[bold green underline]Logout successful.")
 
 
 def main():
@@ -461,25 +492,26 @@ def main():
     print_welcome_box(console)
 
     while True:
-        console.print("\n[bold green underline]Password Manager Menu")
+        console.print("\n[bold dodger_blue1 underline]Password Manager Menu")
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
         console.print("[cyan]3. Exit")
-        choice = console.input("\n[bold green underline]Enter your choice: ")
+        choice = console.input("\n[bold dodger_blue1 underline]Enter your choice: ")
 
         if choice == "1":
-            username = console.input("\n[bold green underline]Enter your username: ")
+            username = console.input("\n[bold dodger_blue1 underline]Enter your username: ")
 
-            console.print("\nPassword must meet the following requirements:")
-            console.print("- At least 8 characters long")
-            console.print("- At least one uppercase letter (A-Z)")
-            console.print("- At least one lowercase letter (a-z)")
-            console.print("- At least one digit (0-9)")
-            console.print("- At least one special character (@#$%^&+=!)")
+            console.print("[bold dodger_blue1 underline]\nPassword must meet the following requirements:")
+            console.print("[bold dark_cyan]- At least 8 characters long")
+            console.print("[bold dodger_blue1]- At least one uppercase letter (A-Z)")
+            console.print("[bold dark_cyan]- At least one lowercase letter (a-z)")
+            console.print("[bold dodger_blue1]- At least one digit (0-9)")
+            console.print("[bold dark_cyan]- At least one special character (@#$%^&+=!)")
 
-            master_password = getpass.getpass("\nEnter your master password: ")
-            confirm_password = getpass.getpass(
-                "\nConfirm your master password: ")
+            console.print("\n[bold dodger_blue1 underline]Enter your master password: ")
+            master_password = getpass.getpass("")
+            console.print("\n[bold dodger_blue1 underline]Confirm your master password: ")
+            confirm_password = getpass.getpass("")
 
             if master_password == confirm_password:
                 if validate_master_password(master_password):
@@ -493,7 +525,7 @@ def main():
             main_choice_two()
 
         elif choice == "3":
-            console.print("\nGoodbye!")
+            console.print("\n[bold green underline]Goodbye!")
             break
 
         else:
