@@ -6,6 +6,8 @@ from cryptography.fernet import Fernet
 from typing import Any
 from rich.console import Console
 from rich.table import Table
+import platform
+import subprocess
 
 console=Console()
 
@@ -115,7 +117,7 @@ def create_user(username: str, master_password: Any) -> None:
 
         # Store the user's Fernet key locally
         store_fernet_key_locally(fernet_key_M, username)
-
+        clear_screen()
         console.print("\n[bold green underline]User created successfully")
 
 
@@ -262,6 +264,7 @@ def retrieve_passwords(username: str) -> Any:
         console.print(table)
 
         console.input("[bold dodger_blue1 underline]Press enter to continue....")
+        clear_screen()
 
     else:
         console.print("\n[bold red underline]No password entries found.")
@@ -340,8 +343,7 @@ def main_choice_two() -> None:
     console.print("[bold green underline]Enter your master password: ")
     master_password = getpass.getpass("")
     if authenticate_user(username, master_password):
-        
-
+        clear_screen()
         console.print("\n[bold green underline]Login successful.")
 
         while True:
@@ -382,21 +384,26 @@ def main_choice_two() -> None:
                 break
 
             else:
+                clear_screen()
                 console.print("[bold red underline]Invalid choice. Please choose a valid option.")
 
     else:
+        clear_screen()
         console.print("[bold red underline]Login failed. Please check your username and master password.")
 
 def choice_one(username: str) -> None:
     # Add new Service and password
+    clear_screen()
     service_name = console.input("\n[bold orange1 underline]Enter the service name: ")
     username_entry = console.input("[bold orange1 underline]Enter the username: ")
     password_entry = console.input("[bold orange1 underline]Enter the password: ")
 
     if add_password(username, service_name, username_entry,
                     password_entry):
+        clear_screen()
         console.print("\n[bold green underline]Password entry added successfully.")
     else:
+        clear_screen()
         console.print(
             """[bold red underline]Failed to add password entry.
             Please create a user first.""")
@@ -404,11 +411,13 @@ def choice_one(username: str) -> None:
 
 def choice_two(username: str) -> None:
     # Display user's stored passwords
+    clear_screen()
     retrieve_passwords(username)
 
 
 def choice_three(username: str) -> None:
     # Update Service username and password
+    clear_screen()
     service_name = console.input(
         "\n[bold orange1 underline]Enter the service name you want to update: ")
     new_username = console.input("[bold orange1 underline]Enter the new username: ")
@@ -417,10 +426,12 @@ def choice_three(username: str) -> None:
     #     "Enter the new password: ")
 
     if update_service(username, service_name, new_username, new_password):
+        clear_screen()
         console.print(
             f'\n[bold green underline]Password for {service_name} '
             'updated successfully.')
     else:
+        clear_screen()
         console.print(
             '\n[bold red underline]Failed to update the password for '
             f'{service_name}. Service not found.')
@@ -428,6 +439,7 @@ def choice_three(username: str) -> None:
 
 def choice_four(username: str) -> None:
     # Delete Service and password
+    clear_screen()
     service_name = console.input(
         "\n[bold dodger_blue1 underline]Enter the service name you want to delete: ")
     confirmation = console.input(
@@ -438,25 +450,31 @@ def choice_four(username: str) -> None:
     if confirmation.lower() == "yes":
         return_entry = delete_service_and_passwords(username, service_name)
         if return_entry is True:
+            clear_screen()
             console.print(
                 f'[bold bright_yellow underline]Service {service_name} and its associated'
                 ' password deleted successfully.')
         else:
+            clear_screen()
             console.print(
                 f'[bold red underline]Failed to delete {service_name}.'
                 ' Service not found.')
     else:
+        clear_screen()
         console.print("[bold orange1 underline]Service deletion canceled.")
 
 
 def choice_five(username: str) -> None:
     # Change master password
+    clear_screen()
     console.print("\n[bold orange1 underline]Enter your new master password: ")
     new_master_password = getpass.getpass("")
 
     if update_user_master_password(username, new_master_password):
+        clear_screen()
         console.print("\n[bold green underline]Master password modified successfully.")
     else:
+        clear_screen()
         console.print(
             '\n[bold red underline]Failed to modify master password.'
             'Please create a user first.')
@@ -464,34 +482,48 @@ def choice_five(username: str) -> None:
 
 def choice_six(username: str) -> None:
     # Delete user and all passwords
+    clear_screen()
     confirmation = console.input(
-        '\n[[bold red underline]Are you sure you want to delete your user'
+        '\n[bold red underline]Are you sure you want to delete your user '
         'and all associated data? (yes/no): ')
     if confirmation.lower() == "yes":
         if delete_user(username):
+            clear_screen()
             console.print(
                 '\n[bold green underline]User and associated data'
                 ' deleted successfully.')
 
         else:
+            clear_screen()
             console.print(
                 '\n[bold red underline]Failed to delete user.'
                 'Please create a user first.')
 
     else:
+        clear_screen()
         console.print("\n[bold orange1 underline]User deletion canceled.")
 
 
 def choice_seven() -> None:
     # Logout
+    clear_screen()
     console.print("\n[bold green underline]Logout successful.")
+
+def clear_screen():
+    #For Windows
+    if platform.system() == "Windows":
+        subprocess.call('cls', shell=True)
+    #For macOS and Linux 
+    else:
+        subprocess.call('clear', shell=True)
 
 
 def main():
     # setup_database()
+    clear_screen()
     print_welcome_box(console)
 
-    while True:
+    while True:        
         console.print("\n[bold dodger_blue1 underline]Password Manager Menu")
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
@@ -517,14 +549,17 @@ def main():
                 if validate_master_password(master_password):
                     create_user(username, master_password)
                 else:
+                    clear_screen()
                     console.print("[bold red underline]Password does not meet the strength requirements.")
             else:
+                clear_screen()
                 console.print("[bold red underline]Passwords do not match. Please try again")
 
         elif choice == "2":
             main_choice_two()
 
         elif choice == "3":
+            clear_screen()
             console.print("\n[bold green underline]Goodbye!")
             break
 
