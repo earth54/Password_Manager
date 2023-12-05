@@ -329,7 +329,7 @@ def print_welcome_box(console):
    
     console.print(f"[magenta]{"=" * width}")
     console.print(f"[magenta]{"="}{' ' * (width - 2)}[magenta]{"="}")
-    console.print(f"[magenta]{"="}{' ' * 12}[bold cyan underline]Welcome to Your Password Manager![/bold cyan underline]{' ' * 13}[magenta]{"="}")
+    console.print(f"[magenta]{"="}{' ' * 12}:smiley:[bold cyan underline]Welcome to Your Password Manager![/bold cyan underline]:smiley:{' ' * 9}[magenta]{"="}")
     console.print(f"[magenta]{"="}{' ' * 4}[cyan]Safely store and manage your passwords with ease.[/cyan]{' ' * 5}[magenta]{"="}")
     console.print(f"[magenta]{"="}{' ' * (width - 2)}[magenta]{"="}")
     console.print(f"[magenta]{"=" * width}")
