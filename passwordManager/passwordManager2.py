@@ -1,3 +1,6 @@
+"""Password manager that saves users/passwords into a MongoDB database
+"""
+
 import getpass
 import os
 import re
@@ -94,12 +97,15 @@ def validate_master_password(password: Any) -> Any:
 def create_user(username: str, master_password: Any) -> None:
 
     # Check if the username already exists
-    query = {"username": f"{username}"}
-    existing_user = utility.find_entries("users", "names", query)
+    query1 = {"username": username}
+    existing_user = utility.find_entries("users", "names", query1)
+
 
     if existing_user:
         clear_screen()
         console.print("[bold red underline]Username already exists. Please choose a different username.")
+
+   
 
     else:
 
@@ -110,7 +116,8 @@ def create_user(username: str, master_password: Any) -> None:
         encrypted_master_password_M = encrypt_password(fernet_key_M,
                                                        master_password)
 
-        query.update({"master_password": encrypted_master_password_M})
+        query = ({"username": username,
+                  "master_password": encrypted_master_password_M})
 
         # add api to make username unique
 
@@ -126,11 +133,11 @@ def create_user(username: str, master_password: Any) -> None:
 
 
 def authenticate_user(username: str, master_password: Any) -> Any:
-    query = {"username": f"{username}"}
+    query = {"username": username}
 
     resultMongo = utility.find_entries("users", "names", query)
 
-    if resultMongo is not None:
+    if resultMongo != []:
 
         encrypted_master_password_M = resultMongo[0]['master_password']
 
@@ -212,8 +219,8 @@ def delete_user(username: str) -> Any:
 def add_password(username: str, service_name: str , username_entry: str,
                  password_entry: str) -> Any:
 
-    query = {"username": f"{username}"}
-    existing_user = utility.find_entries("users", "names", query)
+    query1 = {"username": username}
+    existing_user = utility.find_entries("users", "names", query1)
 
     if existing_user is not None:
 
@@ -526,7 +533,7 @@ def clear_screen():
         subprocess.call('clear', shell=True)
 
 
-def main():
+def main() -> None:
     # setup_database()
     clear_screen()
     print_welcome_box(console)
