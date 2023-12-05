@@ -98,6 +98,7 @@ def create_user(username: str, master_password: Any) -> None:
     existing_user = utility.find_entries("users", "names", query)
 
     if existing_user:
+        clear_screen()
         console.print("[bold red underline]Username already exists. Please choose a different username.")
 
     else:
@@ -144,6 +145,7 @@ def authenticate_user(username: str, master_password: Any) -> Any:
             if master_password == decrypted_master_password_M:
                 return True
         except Exception as e:
+            clear_screen()
             console.print(f"[bold red underline]Error during password decryption: {e}")
 
     return False
@@ -155,10 +157,12 @@ def authenticate_user(username: str, master_password: Any) -> Any:
 def update_user_master_password(username: str,
                                 new_master_password: Any) -> Any:
     if not user_exists(username):
+        clear_screen()
         console.print("[bold red underline]User does not exist.")
         return False
 
     if not validate_master_password(new_master_password):
+        clear_screen()
         console.print("[bold red underline]New master password does not meet the strength requirements.")
         return False
 
@@ -187,6 +191,7 @@ def update_user_master_password(username: str,
 
 def delete_user(username: str) -> Any:
     if not user_exists(username):
+        clear_screen()
         console.print("[bold red underline]User does not exist.")
         return False
 
@@ -267,6 +272,7 @@ def retrieve_passwords(username: str) -> Any:
         clear_screen()
 
     else:
+        clear_screen()
         console.print("\n[bold red underline]No password entries found.")
 
 
@@ -306,6 +312,7 @@ def update_service(username: str, service_name: str, new_username: str,
             return False
 
     else:
+        clear_screen()
         console.print("[bold red underline]User not found.")
         return False
 
@@ -339,6 +346,7 @@ def print_welcome_box(console):
 
 
 def main_choice_two() -> None:
+    clear_screen()
     username = console.input("\n[bold green underline]Enter your username: ")
     console.print("[bold green underline]Enter your master password: ")
     master_password = getpass.getpass("")
@@ -531,6 +539,7 @@ def main():
         choice = console.input("\n[bold dodger_blue1 underline]Enter your choice: ")
 
         if choice == "1":
+            clear_screen()
             username = console.input("\n[bold dodger_blue1 underline]Enter your username: ")
 
             console.print("[bold dodger_blue1 underline]\nPassword must meet the following requirements:")
@@ -564,6 +573,7 @@ def main():
             break
 
         else:
+            clear_screen()
             console.print("\n[bold red underline]Invalid choice. Please choose a valid option.")
 
 
