@@ -10,10 +10,10 @@ from typing import Any, Dict, List
 uri = 'mongodb+srv://cluster1.cjufb6h.mongodb.net/?authSource=%24external'  \
     '&authMechanism=MONGODB-X509&retryWrites=true&w=majority'
 
-path_to_certificate = 'passwordManager/utility/pm_cert.pem'
+path_to_certificate = 'utility/pm_cert.pem'
 
 
-def create_connection() -> Any:
+def create_connection() -> int:
     """Creates connection to MongoDB database
 
     Raises:
@@ -28,15 +28,14 @@ def create_connection() -> Any:
         db = client['testDB']
         collection = db['testCol']
         doc_count = collection.count_documents({})
-        return int(doc_count)  # Should print 0 as the testDB doesn't exist
+        return doc_count  # Should print 0 as the testDB doesn't exist
     except errors.ConnectionFailure as ex:
         print(ex)
         raise ex
 
 
 def create_collection(database_name: str,
-                      collection_name: str) -> Any:
-
+                      collection_name: str) -> str:
     """Creates a collection
 
     Args:
