@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 uri = 'mongodb+srv://cluster1.cjufb6h.mongodb.net/?authSource=%24external'  \
     '&authMechanism=MONGODB-X509&retryWrites=true&w=majority'
 
-path_to_certificate = 'passwordManager/utility/pm_cert.pem'
+path_to_certificate = 'utility/pm_cert.pem'
 
 
 def create_connection() -> Any:
