@@ -3,7 +3,7 @@ TEST_ARGS = --verbose --color=yes
 TYPE_CHECK = mypy --strict
 STYLE_CHECK = flake8
 STYLE_FIX = autopep8 --in-place --recursive --aggressive --aggressive
-FILE = passwordManager2.py
+FILE = passwordManager.py
 
 .PHONY: all
 all: style-check type-check run-test clean run
