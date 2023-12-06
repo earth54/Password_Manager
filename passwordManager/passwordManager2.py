@@ -14,58 +14,107 @@ import subprocess
 
 console=Console()
 
-# Generate a unique Fernet key for the user
-
 def generate_user_fernet_key() -> Any:
+    """Generates a unique Fernet key for the user
+
+    Returns:
+        Any: Returns the Fernet key
+    """
+    
     key = Fernet.generate_key()
     return key
 
-# Store the Fernet key locally for a user
-
 
 def store_fernet_key_locally(fernet_key: Any, user_id: Any) -> Any:
+    """Stores the Fernet key locally for a user
+
+    Args:
+        fernet_key (Any): The Fernet key
+        user_id (Any): Name of the user 
+
+    Returns:
+        Any: 
+    """
+
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "wb") as key_file:
         key_file.write(fernet_key)
 
-# Load the user's Fernet key from local storage
-
 
 def load_fernet_key_locally(user_id: Any) -> Any:
+    """Loads the user's Fernet key from local storage
+
+    Args:
+        user_id (Any): Name of the user
+
+    Returns:
+        Any: Fernet key stored locally on system
+    """
+    
     key_filename = f"user_{user_id}_fernet.key"
     with open(key_filename, "rb") as key_file:
         key = key_file.read()
     return key
 
-# Encrypt a password using Fernet key
-
 
 def encrypt_password(fernet_key: Any, password: Any) -> bytes:
+    """Encrypts a password using Fernet key
+
+    Args:
+        fernet_key (Any): The Fernet key
+        password (Any): user password
+
+    Returns:
+        bytes: The user's encrypted password
+    """
+    
     fernet = Fernet(fernet_key)
     encrypted_password = fernet.encrypt(password.encode())
     return encrypted_password
 
-# Function to decrypt passwords
-
 
 def decrypt_password(fernet_key: Any, encrypted_password: Any) -> Any:
+    """Decrypts user passwords
+
+    Args:
+        fernet_key (Any): Fernet key
+        encrypted_password (Any): User's encrypted password
+
+    Returns:
+        Any: Decrypted user's password
+    """
+
     fernet = Fernet(fernet_key)
     decrypted_password = fernet.decrypt(encrypted_password)
     return decrypted_password.decode()
 
-# Function to check if the username already exists
-
 
 def user_exists(username: str) -> Any:
+    """Check if the username already exists
+
+    Args:
+        username (str): User's name
+
+    Returns:
+        Any: If username is not found, it returns none, 
+            else returns username
+    """
 
     existing_user_M = utility.find_entries("users",
                                            "names", {'username': username})
     return existing_user_M is not None
 
-# Function to check if service name already exists
-
 
 def service_exists(username: str, service_name: str) -> Any:
+    """Check if service name already exists
+
+    Args:
+        username (str): User's name
+        service_name (str): The name of the website/service
+
+    Returns:
+        Any: If service name is found returns True else retrns False
+    """
 
     existing_service = utility.find_entries("passwords",
                                             username,
@@ -76,10 +125,17 @@ def service_exists(username: str, service_name: str) -> Any:
     else:
         return False
 
-# Function to validate master password strength
-
 
 def validate_master_password(password: Any) -> Any:
+    """Validate master password strength
+
+    Args:
+        password (Any): User's master password
+
+    Returns:
+        Any: If the master password's strength meets requirements return True, else return False
+    """
+    
     if (
         len(password) >= 8
         and re.search(r'[A-Z]', password)
@@ -90,13 +146,15 @@ def validate_master_password(password: Any) -> Any:
         return True
     return False
 
-# Function to create a new user with password strength
-# and matching confirmation
-
 
 def create_user(username: str, master_password: Any) -> None:
+    """Create a new user with password strength and matching confirmation if user is not already setup.
 
-    # Check if the username already exists
+    Args:
+        username (str): User's name
+        master_password (Any): User's master password
+    """
+    
     query1 = {"username": username}
     existing_user = utility.find_entries("users", "names", query1)
 
@@ -105,34 +163,34 @@ def create_user(username: str, master_password: Any) -> None:
         clear_screen()
         console.print("[bold red underline]Username already exists. Please choose a different username.")
 
-   
-
     else:
 
-        # Generate a unique Fernet key for the user
         fernet_key_M = generate_user_fernet_key()
 
-        # Encrypt the master password using the user's Fernet key
         encrypted_master_password_M = encrypt_password(fernet_key_M,
                                                        master_password)
 
         query = ({"username": username,
                   "master_password": encrypted_master_password_M})
 
-        # add api to make username unique
-
         utility.insert_entry("users", "names", query)
 
-        # Store the user's Fernet key locally
         store_fernet_key_locally(fernet_key_M, username)
         clear_screen()
         console.print("\n[bold green underline]User created successfully")
 
 
-# Function to authenticate a user
-
-
 def authenticate_user(username: str, master_password: Any) -> Any:
+    """Authenticate a user to log into the Password Manager
+
+    Args:
+        username (str): User's name
+        master_password (Any): User's master password
+
+    Returns:
+        Any: If user doesn't exist return False, else return True
+    """
+    
     query = {"username": username}
 
     resultMongo = utility.find_entries("users", "names", query)
@@ -144,7 +202,7 @@ def authenticate_user(username: str, master_password: Any) -> Any:
         object_id_M = resultMongo[0]['username']
 
         fernet_key_M = load_fernet_key_locally(
-            object_id_M)  # Load the user's Fernet key
+            object_id_M)
 
         decrypted_master_password_M = decrypt_password(
             fernet_key_M, encrypted_master_password_M)
@@ -163,6 +221,17 @@ def authenticate_user(username: str, master_password: Any) -> Any:
 
 def update_user_master_password(username: str,
                                 new_master_password: Any) -> Any:
+    """Modify the user's master password
+
+    Args:
+        username (str): User's name
+        new_master_password (Any): The new master password
+
+    Returns:
+        Any: If the user doesn't exist or new password does not 
+        meet strength requirements return False, else return True
+    """
+    
     if not user_exists(username):
         clear_screen()
         console.print("[bold red underline]User does not exist.")
@@ -176,14 +245,11 @@ def update_user_master_password(username: str,
     user_info_M = utility.find_entries("users", "names",
                                        {'username': username})
 
-    # Decrypt the old master password
     fernet_key_M = load_fernet_key_locally(user_info_M[0]['username'])
 
-    # Encrypt the new master password with the same key
     encrypted_new_master_password_M = encrypt_password(
         fernet_key_M, new_master_password)
 
-    # Update the user's master password in the database
     old_data = {'username': username,
                 'master_password': user_info_M[0]['master_password']}
     new_data = {'username': username,
@@ -193,22 +259,25 @@ def update_user_master_password(username: str,
     return True
 
 
-# Function to delete the user and their passwords
-
-
 def delete_user(username: str) -> Any:
+    """Delete the user and their passwords
+
+    Args:
+        username (str): User's name
+
+    Returns:
+        Any: Returns True once the user and passwords have been deleted.
+    """  
+      
     if not user_exists(username):
         clear_screen()
         console.print("[bold red underline]User does not exist.")
         return False
 
-    # Delete the user's passwords collection
     utility.delete_collection("passwords", username)
 
-    # Delete the user from the Users table
     utility.delete_entry("users", "names", {'username': username})
 
-    # Remove the Fernet key file for this user (optional)
     key_filename = f"user_{username}_fernet.key"
     if os.path.exists(key_filename):
         os.remove(key_filename)
@@ -218,6 +287,19 @@ def delete_user(username: str) -> Any:
 
 def add_password(username: str, service_name: str , username_entry: str,
                  password_entry: str) -> Any:
+    """Adds an entry into the Passsword Manager
+       including Service name, Username, and password.
+
+    Args:
+        username (str): User's name
+        service_name (str): Name of the website/service being added
+        username_entry (str): Username for the website/service
+        password_entry (str): Password for the website/service
+
+    Returns:
+        Any: If the user exists in the user table
+        add the entry and return True, else return False
+    """    
 
     query1 = {"username": username}
     existing_user = utility.find_entries("users", "names", query1)
@@ -243,10 +325,12 @@ def add_password(username: str, service_name: str , username_entry: str,
         return False
 
 
-# Function to retrieve password entries for a user
+def retrieve_passwords(username: str) -> None:
+    """Retrieve password entries for a user
 
-
-def retrieve_passwords(username: str) -> Any:
+    Args:
+        username (str): User's name
+    """    
     user_id_M = utility.find_entries("users", "names", {"username": username})
 
     if user_id_M is not None:
@@ -259,16 +343,11 @@ def retrieve_passwords(username: str) -> Any:
         table.add_column("Username", style="magenta")
         table.add_column("Password", justify="left", style="green")
 
-        # Load the user's Fernet key
         fernet_key_M = load_fernet_key_locally(user_id_M[0]['username'])
 
         for entry in entries_M:
             decrypted_password_M = decrypt_password(fernet_key_M,
                                                     entry['password_entry'])
-            # print(f"\nService: {entry['service_name']}")
-            # print(f"Username: {entry['username_entry']}")
-            # print(f"Password: {decrypted_password_M}")
-            # print()  # Add an empty line to separate entries
 
             table.add_row(entry['service_name'], entry['username_entry'],
                           decrypted_password_M)
@@ -283,28 +362,32 @@ def retrieve_passwords(username: str) -> Any:
         console.print("\n[bold red underline]No password entries found.")
 
 
-# Function to update the username and password for a service
-
-
 def update_service(username: str, service_name: str, new_username: str,
                    new_password: str) -> Any:
+    """Update the username and password for an existing service
 
-    # Check if the user exists
+    Args:
+        username (str): User's name
+        service_name (str): Name of website/service
+        new_username (str): New username for website/service
+        new_password (str): New password for website/service
+
+    Returns:
+        Any: If an existing entry was found for the website/service
+        update the entry and return True, else return error message and False
+    """    
+
     user_id_M = utility.find_entries("users", "names", {"username": username})
 
     if user_id_M:
-        # Load the user's Fernet key
         fernet_key_M = load_fernet_key_locally(user_id_M[0]['username'])
 
-        # Encrypt the new username and password with the user's Fernet key
         encrypted_new_password_M = encrypt_password(fernet_key_M, new_password)
 
-        # Fine the entires with the service_name
         user_id_M = utility.find_entries("passwords", user_id_M[0]['username'],
                                          {"service_name": service_name})
 
         if user_id_M:
-            # Update the username and password for the service
             old_data = {'service_name': service_name,
                         'username_entry': user_id_M[0]['username_entry'],
                         'password_entry': user_id_M[0]['password_entry']}
@@ -324,35 +407,48 @@ def update_service(username: str, service_name: str, new_username: str,
         return False
 
 
-# Function to delete a service and its passwords
-
-
 def delete_service_and_passwords(username: str, service_name: str) -> Any:
+    """Delete a service and its passwords
 
-    return_entry = service_exists(username, service_name)
+    Args:
+        username (str): User's name
+        service_name (str): Name of website/service
 
-    # If service name does not exist return false
+    Returns:
+        Any: If no entries are found for that website/service
+        return false, else delete the entry and return True
+    """    
+
+    return_entry = service_exists(username, service_name)    
+
     if return_entry is False:
         return False
 
-    # If service name exists delete entry
-    # Delete the service and its associated passwords
     utility.delete_entry("passwords", username, {'service_name': service_name})
 
     return True
 
 def print_welcome_box(console):
+    """Prints welcome box
+
+    Args:
+        console (_type_): Console is used for the rich library
+    """    
+    
     width = 60
    
-    console.print(f"[magenta]{"=" * width}")
-    console.print(f"[magenta]{"="}{' ' * (width - 2)}[magenta]{"="}")
-    console.print(f"[magenta]{"="}{' ' * 12}:smiley:[bold cyan underline] Welcome to Your Password Manager![/bold cyan underline]:smiley:{' ' * 8}[magenta]{"="}")
-    console.print(f"[magenta]{"="}{' ' * 4}[cyan]Safely store and manage your passwords with ease.[/cyan]{' ' * 5}[magenta]{"="}")
-    console.print(f"[magenta]{"="}{' ' * (width - 2)}[magenta]{"="}")
-    console.print(f"[magenta]{"=" * width}")
+    console.print(f'[magenta]{"=" * width}')
+    console.print(f'[magenta]{"="}{" " * (width - 2)}[magenta]{"="}')
+    console.print(f'[magenta]{"="}{" " * 12}:smiley:[bold cyan underline] Welcome to Your Password Manager![/bold cyan underline]:smiley:{" " * 8}[magenta]{"="}')
+    console.print(f'[magenta]{"="}{" " * 4}[cyan]Safely store and manage your passwords with ease.[/cyan]{" " * 5}[magenta]{"="}')
+    console.print(f'[magenta]{"="}{" " * (width - 2)}[magenta]{"="}')
+    console.print(f'[magenta]{"=" * width}')
 
 
 def main_choice_two() -> None:
+    """User login to the Password Manager. If successful a functionality
+        menu appears. The user will get an message if unsuccessful.
+    """    
     clear_screen()
     username = console.input("\n[bold green underline]Enter your username: ")
     console.print("[bold green underline]Enter your master password: ")
@@ -364,7 +460,6 @@ def main_choice_two() -> None:
         while True:
             console.print("\n[bold dodger_blue1 underline]User Menu")
 
-            # Print menu options with cyan text, and dim every other option
             console.print("[cyan]1. Add Password Entry")
             console.print("[magenta]2. Retrieve Password Entries")
             console.print("[cyan]3. Update a Service username and password")
@@ -407,7 +502,11 @@ def main_choice_two() -> None:
         console.print("[bold red underline]Login failed. Please check your username and master password.")
 
 def choice_one(username: str) -> None:
-    # Add new Service and password
+    """Add new service and password
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     service_name = console.input("\n[bold orange1 underline]Enter the service name: ")
     username_entry = console.input("[bold orange1 underline]Enter the username: ")
@@ -425,13 +524,21 @@ def choice_one(username: str) -> None:
 
 
 def choice_two(username: str) -> None:
-    # Display user's stored passwords
+    """Display user's stored passwords
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     retrieve_passwords(username)
 
 
 def choice_three(username: str) -> None:
-    # Update Service username and password
+    """Update Service username and password
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     service_name = console.input(
         "\n[bold orange1 underline]Enter the service name you want to update: ")
@@ -453,7 +560,11 @@ def choice_three(username: str) -> None:
 
 
 def choice_four(username: str) -> None:
-    # Delete Service and password
+    """Delete Service and password
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     service_name = console.input(
         "\n[bold dodger_blue1 underline]Enter the service name you want to delete: ")
@@ -480,7 +591,11 @@ def choice_four(username: str) -> None:
 
 
 def choice_five(username: str) -> None:
-    # Change master password
+    """Change master password
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     console.print("\n[bold orange1 underline]Enter your new master password: ")
     new_master_password = getpass.getpass("")
@@ -496,7 +611,11 @@ def choice_five(username: str) -> None:
 
 
 def choice_six(username: str) -> None:
-    # Delete user and all passwords
+    """Delete user and all passwords
+
+    Args:
+        username (str): User's name
+    """    
     clear_screen()
     confirmation = console.input(
         '\n[bold red underline]Are you sure you want to delete your user '
@@ -520,11 +639,14 @@ def choice_six(username: str) -> None:
 
 
 def choice_seven() -> None:
-    # Logout
+    """Logout of Password Manager
+    """    
     clear_screen()
     console.print("\n[bold green underline]Logout successful.")
 
 def clear_screen():
+    """Clears CLI screen
+    """    
     #For Windows
     if platform.system() == "Windows":
         subprocess.call('cls', shell=True)
@@ -534,7 +656,8 @@ def clear_screen():
 
 
 def main() -> None:
-    # setup_database()
+    """Driver function to initiate the Password Manager
+    """    
     clear_screen()
     print_welcome_box(console)
 
