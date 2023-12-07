@@ -699,9 +699,9 @@ def main() -> None:
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
         console.print("[cyan]3. Exit")
-        choice = console.input("\n[dodger_blue1 underline]Enter your choice: ")
+        user_choice = console.input("\n[dodger_blue1 underline]Enter your choice: ")  # noqa E501
 
-        if choice == "1":
+        if user_choice == "1":
             clear_screen()
             username = console.input(
                 "\n[bold dodger_blue1 underline]Enter your username: ")
@@ -740,10 +740,10 @@ def main() -> None:
                     "[bold red underline]Passwords do not match. "
                     "Please try again")
 
-        elif choice == "2":
+        elif user_choice == "2":
             main_choice_two()
 
-        elif choice == "3":
+        elif user_choice == "3":
             clear_screen()
             console.print("\n[bold green underline]Goodbye!\n")
             break
