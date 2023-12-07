@@ -128,7 +128,7 @@ def find_entries(database_name: str, collection_name: str,
             If variable name "entries" is passed in, the function will search
             for matching keys in {key: value} filter and return all matching
             listings in the collection.
-        Variable name "entries" defaults to None.
+        Variable name "entries" defaults to None
 
     Raises:
         ex: Raises an error if found
