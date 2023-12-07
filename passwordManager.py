@@ -601,7 +601,7 @@ def choice_four(username: str) -> None:
         "service name you want to delete: ")
     confirmation = console.input(
         f"\n[bold red underline]Are you sure you want to delete the service"
-        f" {service_name}' and its associated password?"
+        f" {service_name} and its associated password?"
         " (yes/no): ")
 
     if confirmation.lower() == "yes":
@@ -746,7 +746,7 @@ def main() -> None:
 
         elif choice == "3":
             clear_screen()
-            console.print("\n[bold green underline]Goodbye!")
+            console.print("\n[bold green underline]Goodbye!\n")
             break
 
         else:
