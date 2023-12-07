@@ -699,8 +699,7 @@ def main() -> None:
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
         console.print("[cyan]3. Exit")
-        choice = console.input("\n[bold dodger_blue1 underline]Enter "
-                               "your choice: ")
+        choice = console.input("\n[dodger_blue1 underline]Enter your choice: ")
 
         if choice == "1":
             clear_screen()
