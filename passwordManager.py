@@ -55,7 +55,7 @@ def load_fernet_key_locally(user_id: Any) -> Any:
     return key
 
 
-def encrypt_password(fernet_key: Any, password: Any) -> bytes:
+def encrypt_password(fernet_key: Any, password: Any) -> Any:
     """Encrypts a password using Fernet key
 
     Args:
