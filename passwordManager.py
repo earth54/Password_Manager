@@ -699,7 +699,7 @@ def main() -> None:
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
         console.print("[cyan]3. Exit")
-        user_choice = console.input("\n[dodger_blue1 underline]Enter your choice: ")  # noqa E501
+        user_choice = console.input("[dodger_blue1 underline]\nEnter your choice: ")  # noqa E501
 
         if user_choice == "1":
             clear_screen()
