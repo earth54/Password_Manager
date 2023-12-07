@@ -698,8 +698,11 @@ def main() -> None:
         console.print("\n[bold dodger_blue1 underline]Password Manager Menu")
         console.print("[cyan]1. Create User")
         console.print("[magenta]2. Login")
-        console.print("[cyan]3. Exit")
-        user_choice = console.input("[dodger_blue1 underline]\nEnter your choice: ")  # noqa E501
+        console.print("[cyan]3. Exit\n")
+        try:
+            user_choice = console.input("[dodger_blue1 underline]Enter your choice: ")  # noqa E501
+        except EOFError:
+            print("An EOFError occurred.")
 
         if user_choice == "1":
             clear_screen()
